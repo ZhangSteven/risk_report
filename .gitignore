@@ -7,5 +7,6 @@ test/__pycache__/
 logs/
 
 
-# igore the csv output file
+# igore the csv and req output file
 *.csv
+*.req
