@@ -46,23 +46,21 @@ def readBlpFile(file):
 	# [Iterable] lines => [List] line that contains the date
 	findDateLine = partial(
 		firstOf
-	  , lambda line: len(line) > 0 and line[0].lower().startswith('mav: mav')
+	  , lambda line: len(line) > 1 and line[1].startswith('Risk Report LQA Master as of')
 	)
 
 
-	# [String] header containing date => [String] date (yyyy-mm-dd)
-	# The header looks like: MAV: MAV (12/09/2019 01:17:01)
+	# [String] The string containing date => [String] date (yyyy-mm-dd)
+	# it looks like: Risk Report LQA Master as of 20200429
 	getDateFromString = compose(
-		lambda s: datetime.strftime(datetime.strptime(s, '%m/%d/%Y'), '%Y-%m-%d')
-	  , lambda s: s[1:].split()[0]
-	  , lambda m: lognRaise('Failed to get date from line') if m == None else m.group(1)
-	  , lambda s: re.match('.*(\(.*\))', s)
+		lambda s: datetime.strftime(datetime.strptime(s, '%Y%m%d'), '%Y-%m-%d')
+	  , lambda s: s.split()[-1]
 	)
 
 
 	getDateFromLines = compose(
 		getDateFromString
-	  , lambda line: lognRaise('Failed to find date line') if line == None else line[0]
+	  , lambda line: lognRaise('Failed to find date line') if line == None else line[1]
 	  , findDateLine
 	)
 
