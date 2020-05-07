@@ -42,29 +42,29 @@ class TestGeneva(unittest2.TestCase):
 
 
 	def verifyBondPosition(self, p):
-		self.assertEqual('USY70902AB04', p['ISIN'])
+		self.assertEqual('USY70902AB04', p['Id'])
 		self.assertEqual('Corporate Bond', p['Asset Type'])
 		self.assertEqual(3000000, p['Position'])
 		self.assertEqual('USD', p['Currency'])
 		self.assertEqual('2020-04-29', p['Date'])
-		self.assertFalse('TICKER' in p)
+		self.assertEqual('ISIN', p['IdType'])
 
 
 
 	def verifyEquityPosition(self, p):
-		self.assertEqual('2823 HK', p['TICKER'])
+		self.assertEqual('2823 HK Equity', p['Id'])
 		self.assertEqual('Equity', p['Asset Type'])
 		self.assertEqual(530000, p['Position'])
 		self.assertEqual('HKD', p['Currency'])
 		self.assertEqual('2020-04-29', p['Date'])
-		self.assertFalse('ISIN' in p)
+		self.assertEqual('TICKER', p['IdType'])
 
 
 
 	def verifyBondPosition2(self, p):
-		self.assertEqual('XS1164776020', p['ISIN'])
+		self.assertEqual('XS1164776020', p['Id'])
 		self.assertEqual('Corporate Bond', p['Asset Type'])
 		self.assertEqual(2000000, p['Position'])
 		self.assertEqual('USD', p['Currency'])
 		self.assertEqual('2020-01-31', p['Date'])
-		self.assertFalse('TICKER' in p)
+		self.assertEqual('ISIN', p['IdType'])

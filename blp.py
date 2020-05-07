@@ -33,6 +33,7 @@ def lognRaise(msg):
 def readBlpFile(file):
 	"""
 	[String] file => ( [String] date (yyyy-mm-dd)
+					 , [Iterable] All positions consolidated
 					 , [Iterable] CLO positions consolidated
 				     , [Iterable] non-CLO positions consolidated)
 					 )
@@ -42,7 +43,49 @@ def readBlpFile(file):
 	split into CLO positions and non-CLO positions, the condolidate positions
 	across all portofolios.
 	"""
+	isCLOPortfolio = lambda p: p['Account Code'] in \
+						['12229', '12734', '12366', '12630', '12549', '12550', '13007']
 
+
+	"""
+	[Iterable] positions => ( [Iterable] All positions
+							, [Iterable] CLO positions
+							, [Iterable] non CLO positions
+							)
+
+	Split the positions into All, CLO and non-CLO group
+	"""
+	splitCLO = lambda positions: \
+		reduce( lambda acc, el: (chain(acc[0], [el]), chain(acc[1], [el]), acc[2]) \
+								if isCLOPortfolio(el) else \
+								(chain(acc[0], [el]), acc[1], chain(acc[2], [el]))
+	  		  , positions
+	  		  , ([], [], [])
+	  		  )
+
+
+	splitnConsolidate = compose(
+	  	partial(map, consolidate)
+	  , splitCLO
+	)
+
+
+	return \
+	compose(
+		lambda t: (t[0], *splitnConsolidate(t[1]))
+	  , readBlpPositionsFromFile
+	)(file)
+
+
+
+
+def readBlpPositionsFromFile(file):
+	"""
+	[String] file => ( [String] date
+					 , [Iterable] positions)
+
+	Read positions from file, not consoldation.
+	"""
 	# [Iterable] lines => [List] line that contains the date
 	findDateLine = partial(
 		firstOf
@@ -69,47 +112,23 @@ def readBlpFile(file):
 		mergeDict(p, {'Date': date})
 
 
-	updatePositionTicker = lambda p: \
-		mergeDict(p, {'TICKER': p['Name'] + ' Equity'}) if p['Asset Type'] == 'Equity' \
-		else p
+	updatePositionId = lambda p: \
+		mergeDict(p, {'Id': p['Name'] + ' Equity', 'IdType': 'TICKER'}) \
+		if p['Asset Type'] == 'Equity' else \
+		mergeDict(p, {'Id': p['ISIN'], 'IdType': 'ISIN'})
 
 
-	isCLOPortfolio = lambda p: p['Account Code'] in \
-						['12229', '12734', '12366', '12630', '12549', '12550', '13007']
-
-
-	"""
-	[Iterable] positions => ( [Iterable] CLO positions
-							, [Iterable] non CLO positions
-							)
-
-	Split the positions into CLO and non-CLO group, then consolidate them
-	"""
-	splitCLO = lambda positions: \
-		reduce( lambda acc, el: (chain(acc[0], [el]), acc[1]) if isCLOPortfolio(el) else \
-								(acc[0], chain(acc[1], [el])) 
-	  		  , positions
-	  		  , ([], [])
-	  		  )
-
-
-	updateSplitConsolidate = compose(
-	  	lambda t: ( consolidate(t[0])
-				  , consolidate(t[1])
-				  )
-	  , splitCLO
-	  , partial(map, updatePositionTicker)
-	  , lambda date, positions: \
-	  		map(partial(updatePositionWithDate, date), positions)
-	)
+	updatePositions = lambda date, positions: \
+		map( updatePositionId
+		   , map(partial(updatePositionWithDate, date), positions))
 
 
 	return \
 	compose(
-		lambda t: (t[0], *updateSplitConsolidate(t[0], t[1]))
+		lambda t: (t[0], updatePositions(t[0], t[1]))
 	  , lambda lines: (getDateFromLines(lines), getLongHoldings(lines))
 	  , fileToLines
-	  , lambda file: lognContinue('readBlpFile(): {0}'.format(file), file)
+	  , lambda file: lognContinue('readBlpPositionsFromFile(): {0}'.format(file), file)
 	)(file)
 
 
@@ -174,22 +193,22 @@ getLongHoldings = compose(
 
 	Example:
 
-	[ {'Name': '1 HK', 'Position': 100, ...}
-	  , {'Name': '1 HK', 'Position': 200, ...}
+	[ {'Id': '1 HK', 'Position': 100, ...}
+	  , {'Id': '1 HK', 'Position': 200, ...}
 	]
 
 	=>
 
-	{'Name': '1 HK', 'Position': 300, ...}
+	{'Id': '1 HK', 'Position': 300, ...}
 """
 consolidateGroup = lambda group: \
 	mergeDict(group[0].copy(), {'Position': sum(map(lambda p: p['Position'], group))})
 
 
 
-# [Iterable] positions => [Iterable] consolidated positions
+"""[Iterable] positions => [Iterable] consolidated positions"""
 consolidate = compose(
 	  partial(map, consolidateGroup)
 	, lambda d: d.values()
-	, partial(groupbyToolz, lambda p: p['Name'])
+	, partial(groupbyToolz, lambda p: p['Id'])
 )

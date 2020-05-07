@@ -45,7 +45,7 @@ def readGenevaFile(file):
 	processTaxlotInfo = compose(
 		detectDuplicateISIN
 	  , list
-	  , partial(map, updateTickerISIN)
+	  , partial(map, updateId)
 	  , partial(map, addNewFields)
 	  , partial(filterfalse, lambda p: p['Quantity'] == 0)
 	  , partial(filterfalse, lambda p: p['ThenByDescription'] == 'Cash and Equivalents')
@@ -69,11 +69,10 @@ removeHTMfromInvestID = lambda investId: \
 
 
 
-updateTickerISIN = lambda p: mergeDict(
-	p
-  , {'TICKER': p['InvestID']} if p['Asset Type'] == 'Equity' else \
-  	{'ISIN' : removeHTMfromInvestID(p['InvestID'])}
-)
+updateId = lambda p: \
+	mergeDict(p, {'Id': p['InvestID'] + ' Equity', 'IdType': 'TICKER'}) \
+	if p['Asset Type'] == 'Equity' else \
+  	mergeDict(p, {'Id': removeHTMfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) 
 
 
 
