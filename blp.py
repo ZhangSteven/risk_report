@@ -69,13 +69,18 @@ def readBlpFile(file):
 		mergeDict(p, {'Date': date})
 
 
+	updatePositionTicker = lambda p: \
+		mergeDict(p, {'TICKER': p['Name'] + ' Equity'}) if p['Asset Type'] == 'Equity' \
+		else p
+
+
 	isCLOPortfolio = lambda p: p['Account Code'] in \
 						['12229', '12734', '12366', '12630', '12549', '12550', '13007']
 
 
 	"""
-	[Iterable] positions => ( [Iterable] consolidated CLO positions
-							, [Iterable] consolidated non CLO positions
+	[Iterable] positions => ( [Iterable] CLO positions
+							, [Iterable] non CLO positions
 							)
 
 	Split the positions into CLO and non-CLO group, then consolidate them
@@ -93,6 +98,7 @@ def readBlpFile(file):
 				  , consolidate(t[1])
 				  )
 	  , splitCLO
+	  , partial(map, updatePositionTicker)
 	  , lambda date, positions: \
 	  		map(partial(updatePositionWithDate, date), positions)
 	)
@@ -133,8 +139,13 @@ getPositions = compose(
 
 
 emptyorShortPosition = lambda p: p['Position'] == '' or p['Position'] <= 0
-unwantedPositionType = lambda p: p['Asset Type'] in \
-	['Cash', 'Foreign Exchange Forward', 'Repo Liability', 'Money Market']
+
+
+unwantedPosition = lambda p: p['Asset Type'] in \
+	['Cash', 'Foreign Exchange Forward', 'Repo Liability', 'Money Market'] or \
+	p['Name'] in ['.FSFUND HK', 'CLFLDIF HK']	# open ended funds
+
+
 difPosition = lambda p: p['Account Code'][:5] == '19437'
 
 
@@ -150,7 +161,7 @@ difPosition = lambda p: p['Account Code'][:5] == '19437'
 """
 getLongHoldings = compose(
 	partial(filterfalse, difPosition)
-  , partial(filterfalse, unwantedPositionType)
+  , partial(filterfalse, unwantedPosition)
   , partial(filterfalse, emptyorShortPosition)
   , getPositions
 )

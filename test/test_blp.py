@@ -29,7 +29,7 @@ class TestBlp(unittest2.TestCase):
 
 
 
-	def testGetConsolidatedHoldings(self):
+	def testReadBlpFile(self):
 		inputFile = join(getCurrentDirectory(), 'samples', 'risk_m2_sample.xls')
 		date, clo, nonCLO = readBlpFile(inputFile)
 		self.assertEqual('2019-12-09', date)
@@ -42,12 +42,21 @@ class TestBlp(unittest2.TestCase):
 
 
 
+	def testReadBlpFile2(self):
+		inputFile = join(getCurrentDirectory(), 'samples', 'risk_m2_20200429.xlsx')
+		date, _, nonCLO = readBlpFile(inputFile)
+		self.assertEqual('2020-04-29', date)
+		self.verifyEquityPosition(findByName('2 HK', nonCLO))
+
+
+
 	def verifyCLOPosition(self, p):
 		self.assertEqual('US55608KAD72', p['ISIN'])
 		self.assertEqual('Corporate Bond', p['Asset Type'])
 		self.assertEqual(15846, p['Position'])
 		self.assertEqual('USD', p['Currency'])
 		self.assertEqual('2019-12-09', p['Date'])
+		self.assertFalse('TICKER' in p)
 
 
 
@@ -57,3 +66,14 @@ class TestBlp(unittest2.TestCase):
 		self.assertEqual(4000, p['Position'])
 		self.assertEqual('USD', p['Currency'])
 		self.assertEqual('2019-12-09', p['Date'])
+		self.assertFalse('TICKER' in p)
+
+
+
+	def verifyEquityPosition(self, p):
+		self.assertEqual('HK0002007356', p['ISIN'])
+		self.assertEqual('Equity', p['Asset Type'])
+		self.assertEqual(384500, p['Position'])
+		self.assertEqual('HKD', p['Currency'])
+		self.assertEqual('2020-04-29', p['Date'])
+		self.assertEqual('2 HK Equity', p['TICKER'])

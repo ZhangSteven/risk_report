@@ -1,6 +1,7 @@
 # coding=utf-8
 #
-# Read the Bloomberg input file (Excel) and output positions.
+# Read the Bloomberg input file (Excel) and Geneva input file, then produce
+# master list files and LQA request files.
 # 
 
 from risk_report.utility import getCurrentDirectory
@@ -13,14 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 
+def buildMasterList(blpFile, genevaFile):
+	"""
+	[String] blpFile, [String] genevaFile
+		=> ( [String] master list CLO csv file
+		   , [STring] master list non-CLO csv file
+		   )
+
+	Side effect: create two output csv files
+	"""
+	pass
+
+
+
 """
 	[Dictionary] r, [String] date (yyyymmdd) => [Dictionary] LQA record
 """
 lqaRecord = lambda date, r: \
-	{ 'Identifier ID': r['Name'] + ' Equity' if r['Asset Type'] == 'Equity' \
-						else r['ISIN']
-	, 'Identifier ID Type': 'TICKER' if r['Asset Type'] == 'Equity' \
-						else 'ISIN'
+	{ 'Identifier ID': r['TICKER'] if 'TICKER' in r else r['ISIN']
+	, 'Identifier ID Type': 'TICKER' if 'TICKER' in r else 'ISIN'
 	, 'LQA_POSITION_TAG_1': 'MasterList'
 	, 'LQA_TGT_LIQUIDATION_VOLUME': str(r['Position'])
 	, 'LQA_SOURCE_TGT_LIQUIDATION_COST': 'PR' if r['Asset Type'] == 'Equity' \

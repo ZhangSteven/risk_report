@@ -109,6 +109,8 @@ detectDuplicateISIN = lambda positions: compose(
 	[String] securityType => [String] type
 	
 	Map the security's type from Geneva report to the new format
+
+	If there is a type that is not recognized, then it will raise an error.
 """
 getSecurityType = lambda securityType: \
 	'Equity' if securityType in [ 'Common Stock', 'Real Estate Investment Trust'
