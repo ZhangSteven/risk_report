@@ -4,7 +4,7 @@
 # 
 
 from risk_report.utility import getCurrentDirectory
-from risk_report.blp import getConsolidatedHoldings
+from risk_report.blp import readBlpFile
 from functools import partial
 from toolz.functoolz import compose
 from os.path import join
@@ -34,11 +34,10 @@ lqaRecord = lambda date, r: \
 
 
 
-getLQARecords = lambda date, file: \
-	compose( partial(map, partial(lqaRecord, date))
-		   , lambda t: t[1]
-		   , getConsolidatedHoldings
-		   )(file)
+getLQARecordsFromFile = lambda file: compose( 
+	lambda t: map(partial(lqaRecord, t[0]), t[1])
+  , readBlpFile
+)(file)
 
 
 
@@ -71,7 +70,7 @@ outputString = lambda records: \
 def doOutput(date, inputFile):
 	with open('LQA_'+date+'.req', 'w') as outputFile:
 		outputFile.write(
-			compose(outputString, partial(getLQARecords, date))(inputFile)
+			compose(outputString, getLQARecordsFromFile)(inputFile)
 		)
 
 

@@ -15,10 +15,10 @@ findByName = lambda name, positions: \
 
 
 
-class TestALL(unittest2.TestCase):
+class TestBlp(unittest2.TestCase):
 
 	def __init__(self, *args, **kwargs):
-		super(TestALL, self).__init__(*args, **kwargs)
+		super(TestBlp, self).__init__(*args, **kwargs)
 
 
 

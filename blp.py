@@ -95,7 +95,8 @@ def readBlpFile(file):
 				  , consolidate(t[1])
 				  )
 	  , splitCLO
-	  , lambda date, positions: map(partial(updatePositionWithDate, date), positions)
+	  , lambda date, positions: \
+	  		map(partial(updatePositionWithDate, date), positions)
 	)
 
 
