@@ -1,15 +1,12 @@
 # coding=utf-8
 #
-# Build the .req file to generate Bloomberg liquidity report.
+# Read the Bloomberg input file (Excel) and output positions.
 # 
 
-from itertools import takewhile, dropwhile, filterfalse
+from risk_report.utility import getCurrentDirectory
+from risk_report.blp import getConsolidatedHoldings
 from functools import partial
 from toolz.functoolz import compose
-from toolz.itertoolz import groupby as groupbyToolz
-from utils.iter import pop
-from nomura.main import fileToLines
-from risk_report.utility import getCurrentDirectory
 from os.path import join
 import logging
 logger = logging.getLogger(__name__)
@@ -37,69 +34,10 @@ lqaRecord = lambda date, r: \
 
 
 
-validPosition = compose(
-	  partial(filter, lambda x: x['Position'] > 0)
-	, partial(filterfalse, lambda x: x['Asset Type'] in \
-							['Cash', 'Repo Liability', 'Foreign Exchange Forward'])
-)
-
-
-
-"""
-	(name, list of records under the name) => [Dictioanry] consolidated record
-
-	Example:
-
-	( '1 HK'
-	, [ {'Name': '1 HK', 'Position': 100, ...}
-	  , {'Name': '1 HK', 'Position': 200, ...}
-	  ]
-	)
-
-	=>
-
-	{'Name': '1 HK', 'Position': 300, ...}
-"""
-consolidateGroup = lambda t: \
-	{ 'Name': t[0]
-	, 'ISIN': t[1][0]['ISIN']
-	, 'Asset Type': t[1][0]['Asset Type']
-	, 'Position': sum(map(lambda x: x['Position'], t[1]))
-	}
-
-
-
-consolidate = compose(
-	  partial(map, consolidateGroup)
-	, lambda d: d.items()
-	, partial(groupbyToolz, lambda x: x['Name'])
-)
-
-
-
-"""
-	[String] file => [Iterable] positions
-
-	position: [Dictionary] header -> value
-"""
-getPositions = compose(
-	  lambda t: map(lambda line: dict(zip(t[0], line)), t[1])
-	, lambda t: ( t[0]
-				, filterfalse( lambda line: line[0] in ['Top Level', 'Long', 'Short']
-							 , takewhile(lambda line: line[0] != '', t[1]))
-				)
-	, lambda lines: (pop(lines), lines)
-	, partial(dropwhile, lambda line: line[0] != 'Name')
-	, fileToLines
-)
-
-
-
 getLQARecords = lambda date, file: \
 	compose( partial(map, partial(lqaRecord, date))
-		   , validPosition
-		   , consolidate
-		   , getPositions
+		   , lambda t: t[1]
+		   , getConsolidatedHoldings
 		   )(file)
 
 
@@ -138,11 +76,13 @@ def doOutput(date, inputFile):
 
 
 
-
 if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	inputFile = join('samples', 'risk_m2_20191209.xls')
-	date = '20191209'
-	doOutput(date, inputFile)
+	import argparse
+	parser = argparse.ArgumentParser(description='Process Bloomberg holding File and Geneva holding file (DIF only), then produce LQA request file for Bloomberg.')
+	parser.add_argument( 'blp_file', metavar='blp_file', type=str
+					   , help='Bloomberg holding file')
+	args = parser.parse_args()
+	doOutput('2020-05-06', args.blp_file)
