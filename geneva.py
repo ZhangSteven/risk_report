@@ -46,8 +46,7 @@ def getGenevaLqaPositions(positions):
 		securityType in [ 'Common Stock', 'Real Estate Investment Trust'
 								  , 'Stapled Security', 'Exchange Trade Fund']
 
-	isBondType = lambda securityType: \
-		securityType.split()[-1] == 'Bond'
+	isBondType = lambda securityType: securityType.split()[-1] == 'Bond'
 
 
 	addIdnType = lambda p: \
@@ -92,7 +91,7 @@ def readGenevaFile(file):
 		p
 	  , {'DataSource': 'geneva', 'RecordType': 'position'}
 	)
-	
+
 
 	# Convert yyyy-mm-dd to yyyymmdd
 	convertDateFormat = lambda d: ''.join(d.split('-'))
