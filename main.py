@@ -5,8 +5,8 @@
 # 
 
 from risk_report.utility import getCurrentDirectory
-from risk_report.blp import getBlpLqaPositions
-from risk_report.geneva import readGenevaFile, getGenevaLqaPositions
+from risk_report.blp import getBlpLqaPositions, readBlpFile
+from risk_report.geneva import getGenevaLqaPositions, readGenevaFile
 from functools import partial
 from itertools import chain
 from toolz.functoolz import compose
@@ -29,6 +29,27 @@ def lognRaise(msg):
 
 
 
+def argumentsAsTuple(func):
+	"""
+	[Function] func => [Function] inner
+
+	NOTE: CANNOT be used if func takes only one argument.
+
+	A decorator function. When used to decorate another function (func), the
+	function then takes a tuple as a single argument, unpack it and then calls
+	func to return results.
+
+	This can be handy in composing functions, becuase return values of the 
+	previous function is passed to the next function in the form of a tuple 
+	when multiple results are returned.
+	"""
+	def inner(t):
+		return func(*t)
+
+	return inner
+
+
+
 def buildLqaRequestFromFiles(blpFile, genevaFile):
 	"""
 	[String] blpFile, [String] genevaFile
@@ -38,18 +59,48 @@ def buildLqaRequestFromFiles(blpFile, genevaFile):
 
 	Side effect: create 2 LQA request files
 	"""
-	date1, clo, nonClo = compose(
+
+	"""
+		[String] file 
+			=> ( [String] date (yyyy-mm-dd)
+			   , [Iterable] clo
+			   , [Iterable] nonCLO
+			   )
+	"""
+	processBlpFile = compose(
 		lambda t: (t[0], *getBlpLqaPositions(t[1]))
 	  , readBlpFile
-	)(blpFile)
+	)
 
-	date2, dif = readGenevaFile(genevaFile)
 
-	if date1 != date2:
-		lognRaise('inconsistent dates: {0}, {1}'.format(date1, date2))
+	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
+	processGenevaFile = compose(
+		lambda t: (t[0], getGenevaLqaPositions(t[1]))
+	  , readGenevaFile
+	)
 
-	return buildLqaRequest('masterlist_nonCLO', date1, consolidate(chain(nonClo, dif))) \
-		 , buildLqaRequest('masterlist_CLO', date1, consolidate(clo))
+
+	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
+		( buildLqaRequest( 'masterlist_nonCLO'
+						 , dt
+						 , consolidate(chain(nonCLO, genevaPositions))
+						 )
+		, buildLqaRequest('masterlist_CLO', dt, consolidate(clo))
+		)
+
+
+	checkDate = lambda d1, clo, nonCLO, d2, genevaPositions: \
+  		lognRaise('inconsistent dates: {0}, {1}'.format(d1, d2)) \
+  		if d1 != d2 else (d1, clo, nonCLO, genevaPositions)
+
+
+	return compose(
+		argumentsAsTuple(processDatenPosition)  
+	  , argumentsAsTuple(checkDate)
+	  , lambda blpFile, genevaFile: ( *processBlpFile(blpFile)
+	  								, *processGenevaFile(genevaFile)
+	  								)
+	)(blpFile, genevaFile)
 
 
 
@@ -83,11 +134,9 @@ def buildLqaRequest(name, date, positions):
 		{ 'Identifier ID': r['Id']
 		, 'Identifier ID Type': r['IdType']
 		, 'LQA_POSITION_TAG_1': name
-		, 'LQA_TGT_LIQUIDATION_VOLUME': str(int(r['Position']))
-		, 'LQA_SOURCE_TGT_LIQUIDATION_COST': 'PR' if r['Asset Type'] == 'Equity' \
-							else 'BA'
-		, 'LQA_FACTOR_TGT_LIQUIDATION_COST': '20' if r['Asset Type'] == 'Equity' \
-							else '1'
+		, 'LQA_TGT_LIQUIDATION_VOLUME': str(r['Position'])
+		, 'LQA_SOURCE_TGT_LIQUIDATION_COST': 'PR' if r['IdType'] == 'TICKER' else 'BA'
+		, 'LQA_FACTOR_TGT_LIQUIDATION_COST': '20' if r['IdType'] == 'TICKER' else '1'
 		, 'LQA_TGT_LIQUIDATION_HORIZON': '1'
 		, 'LQA_TGT_COST_CONF_LEVL': '95'
 		, 'LQA_MODEL_AS_OF_DATE': date
@@ -118,7 +167,6 @@ def buildLqaRequest(name, date, positions):
 
 
 	return lqaFile
-
 
 
 

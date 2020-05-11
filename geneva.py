@@ -32,11 +32,9 @@ def getGenevaLqaPositions(positions):
 
 	Read Geneva consolidated tax lot positions, then do the following: 
 
-	1) take out those not suitable to do liquidity test (cash, FX forward, etc.);
-	2) Add Id and IdType fields for LQA processing.
-	3) Add 'Position' field (same as quantity) for LQA processing.
+	1) take out those not suitable for liquidity test (cash, FX forward, etc.);
+	2) Add Id, IdType and Position fields for LQA processing.
 
-	Return the positions
 	"""
 	removeHTMfromInvestID = lambda investId: \
 		investId[0:12] if len(investId) > 15 and investId[-4:] == ' HTM' else investId
@@ -78,14 +76,6 @@ def readGenevaFile(file):
 
 	Read a Geneva tax lot appraisal with accrued interest report, get the
 	raw consolidated positions, utilizing the getTaxlotInfo() function.
-
-	'Name': name of the security
-	'Position': quantity
-	'ISIN': isin code if this is a bond (equity position may not have)
-	'TICKER': Ticker code if this is an equity (bond may not have)
-	'Asset Type': either 'Equity', or 'xxx Bond'
-	'Currency': currency
-	'Date': date of the report's PeriodEndDate
 	"""
 	addNewFields = lambda p: mergeDict(
 		p
@@ -105,4 +95,3 @@ def readGenevaFile(file):
 	  , getTaxlotInfo
 	  , lambda file: lognContinue('readGenevaFile(): {0}'.format(file), file)
 	)(file)
-# End of readGenevaFile()

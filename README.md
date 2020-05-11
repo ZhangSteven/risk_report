@@ -2,6 +2,14 @@
 Generate LQA request files
 
 
+++++++++++
+To do
+++++++++++
+A bond has an invest id "XS1684793018 Perfshs" in DIF 2020-04-29 tax file. We need to convert that to ISIN.
+
+1) use a special case handler.
+2) after that, use a detector to check all ISIN codes.
+
 
 ++++++++++
 Bloomberg Data File
