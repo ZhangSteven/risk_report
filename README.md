@@ -5,10 +5,24 @@ Generate LQA request files
 ++++++++++
 To do
 ++++++++++
-A bond has an invest id "XS1684793018 Perfshs" in DIF 2020-04-29 tax file. We need to convert that to ISIN.
 
-1) use a special case handler.
-2) after that, use a detector to check all ISIN codes.
+1. A bond has an invest id "XS1684793018 Perfshs" in DIF 2020-04-29 tax file. We need to convert that to ISIN.
+
+	1) use a special case handler.
+	2) after that, use a detector to check all ISIN codes.
+
+2. Add test case for consolicated positions after merging BLP and Geneva positions.
+
+3. Try making the reply file name customizable in the starting lines of the request file.
+
+
+
+++++++++++
+Remaining Issues
+++++++++++
+
+1. Every module now has their own for lognRaise() and lognContinue() functions. This is because each module needs its own 'logger' instance so that from the log file we can tell from which module the log is generated.
+
 
 
 ++++++++++

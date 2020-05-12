@@ -2,7 +2,8 @@
 # 
 
 import unittest2
-from risk_report.geneva import readGenevaFile, getGenevaLqaPositions
+from risk_report.geneva import readGenevaFile
+from risk_report.lqa import getGenevaLqaPositions
 from risk_report.utility import getCurrentDirectory
 from utils.iter import firstOf
 from toolz.functoolz import compose
@@ -56,8 +57,6 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual(3000000, p['Position'])
 		self.assertEqual('USD', p['Currency'])
 		self.assertEqual('2020-04-29', p['PeriodEndDate'])
-		self.assertEqual('geneva', p['DataSource'])
-		self.assertEqual('position', p['RecordType'])
 
 
 
@@ -68,8 +67,7 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual(530000, p['Position'])
 		self.assertEqual('HKD', p['Currency'])
 		self.assertEqual('2020-04-29', p['PeriodEndDate'])
-		self.assertEqual('geneva', p['DataSource'])
-		self.assertEqual('position', p['RecordType'])
+
 
 
 	def verifyBondPosition2(self, p):
@@ -79,5 +77,3 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual(2000000, p['Position'])
 		self.assertEqual('USD', p['Currency'])
 		self.assertEqual('2020-01-31', p['PeriodEndDate'])
-		self.assertEqual('geneva', p['DataSource'])
-		self.assertEqual('position', p['RecordType'])

@@ -5,10 +5,10 @@
 # 
 
 from risk_report.utility import getCurrentDirectory
-from risk_report.blp import getBlpLqaPositions, readBlpFile
-from risk_report.geneva import getGenevaLqaPositions, readGenevaFile
-from functools import partial
-from itertools import chain
+from risk_report.blp import readBlpFile
+from risk_report.geneva import readGenevaFile
+from functools import partial, reduce
+from itertools import chain, filterfalse
 from toolz.functoolz import compose
 from toolz.itertoolz import groupby as groupbyToolz
 from utils.utility import mergeDict
@@ -101,6 +101,116 @@ def buildLqaRequestFromFiles(blpFile, genevaFile):
 	  								, *processGenevaFile(genevaFile)
 	  								)
 	)(blpFile, genevaFile)
+
+
+
+def getGenevaLqaPositions(positions):
+	"""
+	[Iterable] positions => [Iterable] positions
+
+	Read Geneva consolidated tax lot positions, then do the following: 
+
+	1) take out those not suitable for liquidity test (cash, FX forward, etc.);
+	2) Add Id, IdType and Position fields for LQA processing.
+
+	"""
+	removeHTMfromInvestID = lambda investId: \
+		investId[0:12] if len(investId) > 15 and investId[-4:] == ' HTM' else investId
+
+
+	isEquityType = lambda securityType: \
+		securityType in [ 'Common Stock', 'Real Estate Investment Trust'
+						, 'Stapled Security', 'Exchange Trade Fund']
+
+	isBondType = lambda securityType: securityType.split()[-1] == 'Bond'
+
+
+	addIdnType = lambda p: \
+		mergeDict(p, {'Id': p['InvestID'] + ' Equity', 'IdType': 'TICKER'}) \
+		if isEquityType(p['ThenByDescription']) else \
+	  	mergeDict(p, {'Id': removeHTMfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) \
+	  	if isBondType(p['ThenByDescription']) else \
+	  	lognRaise('addIdnType(): unsupported type: {0}'.format(p['ThenByDescription']))
+
+
+	addPosition = lambda p: \
+		mergeDict(p, {'Position': p['Quantity']})
+
+
+	return compose(
+		partial(map, addIdnType)
+	  , partial(map, addPosition)
+	  , partial(filterfalse, lambda p: p['Quantity'] == 0)
+	  , partial(filterfalse, lambda p: p['ThenByDescription'] == 'Cash and Equivalents')
+	  , lambda positions: lognContinue('getGenevaLqaPositions(): start', positions)
+	)(positions)
+
+
+
+def getBlpLqaPositions(positions):
+	"""
+	[Iterable] positions => ( [Iterable] CLO positions
+					 	    , [Iterable] nonCLO positions
+					 	    )
+
+	Read Bloomberg raw positions, then do the following: 
+
+	1) take out those not suitable to do liquidity test (cash, FX forward, etc.);
+	2) take out DIF fund positions, since they will come from Geneva;
+	2) split into clo and nonCLO positions.
+
+	Return (CLO positions, nonCLO positions)
+	"""
+	removeUnwantedPositions = compose(
+		partial(filterfalse, lambda p: p['Account Code'][:5] == '19437')
+
+	  , partial( filterfalse
+	  		   , lambda p: p['Asset Type'] in [ 'Cash', 'Foreign Exchange Forward'
+	  		   								  , 'Repo Liability', 'Money Market'] \
+					or p['Name'] in ['.FSFUND HK', 'CLFLDIF HK']	# open ended funds
+			   )
+	  
+	  , partial(filterfalse, lambda p: p['Position'] == '' or p['Position'] <= 0)
+	)
+
+
+	updatePositionId = lambda p: \
+		mergeDict(p, {'Id': p['Name'] + ' Equity', 'IdType': 'TICKER'}) \
+		if p['Asset Type'] == 'Equity' else \
+		mergeDict(p, {'Id': p['ISIN'], 'IdType': 'ISIN'})
+
+
+	isCLOPortfolio = lambda p: p['Account Code'] in \
+						['12229', '12734', '12366', '12630', '12549', '12550', '13007']
+
+
+	"""
+	[Iterable] positions => ( [Iterable] CLO positions
+							, [Iterable] non CLO positions
+							)
+
+	Split the positions into All, CLO and non-CLO group
+	"""
+	splitCLO = lambda positions: \
+		reduce( lambda acc, el: ( chain(acc[0], [el])
+								, acc[1]
+								) if isCLOPortfolio(el) else \
+								
+								( acc[0]
+								, chain(acc[1], [el])
+								)
+	  		  , positions
+	  		  , ([], [])
+	  		  )
+
+
+	return \
+	compose(
+		splitCLO
+	  , partial(map, updatePositionId)
+	  , removeUnwantedPositions		
+	  , lambda positions: lognContinue('getBlpLqaPositions(): start', positions)
+	)(positions)
 
 
 

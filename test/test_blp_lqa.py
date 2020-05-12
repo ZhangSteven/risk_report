@@ -2,8 +2,8 @@
 # 
 
 import unittest2
-from risk_report.blp import getBlpLqaPositions, readBlpFile
-from risk_report.main import consolidate
+from risk_report.blp import readBlpFile
+from risk_report.lqa import consolidate, getBlpLqaPositions
 from risk_report.utility import getCurrentDirectory
 from functools import partial
 from utils.iter import firstOf
@@ -57,9 +57,6 @@ class TestBlp(unittest2.TestCase):
 		self.assertEqual('Corporate Bond', p['Asset Type'])
 		self.assertEqual(290400, p['Position'])
 		self.assertEqual('USD', p['Currency'])
-		self.assertEqual('20200429', p['AsOfDate'])
-		self.assertEqual('position', p['RecordType'])
-		self.assertEqual('aim', p['DataSource'])
 
 
 
@@ -69,9 +66,6 @@ class TestBlp(unittest2.TestCase):
 		self.assertEqual('Corporate Bond', p['Asset Type'])
 		self.assertEqual(6000, p['Position'])
 		self.assertEqual('USD', p['Currency'])
-		self.assertEqual('20200429', p['AsOfDate'])
-		self.assertEqual('position', p['RecordType'])
-		self.assertEqual('aim', p['DataSource'])
 
 
 
@@ -81,6 +75,3 @@ class TestBlp(unittest2.TestCase):
 		self.assertEqual('Equity', p['Asset Type'])
 		self.assertEqual(256500, p['Position'])
 		self.assertEqual('HKD', p['Currency'])
-		self.assertEqual('20200429', p['AsOfDate'])
-		self.assertEqual('position', p['RecordType'])
-		self.assertEqual('aim', p['DataSource'])
