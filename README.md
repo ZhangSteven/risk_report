@@ -9,6 +9,17 @@ Purpose of this application:
 
 
 
+## Considerations
+
+1. What is the datasource for 19437? There are fees not included in the tax lot report such as "audit fees payable". Need to ask Kicoo.
+
+2. Asset allocation: based on a list of filters.
+	1. Location: China, Hong Kong, etc.
+	2. Asset class: fixed income, equity, fund, commodity. There are sub categories of each asset class, e.g., equity has listed/unlisted/derivatives, and listed equity has financial and non-financial, derivatives has exchanged traded or over-the-counter.
+
+
+
+
 ## Know Issues
 
 1. A bond has an invest id "XS1684793018 Perfshs" in DIF 2020-04-29 tax file. We need to convert that to ISIN before consolidating the tax lot report.
