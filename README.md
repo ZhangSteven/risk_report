@@ -17,7 +17,13 @@ Purpose of this application:
 	1. Location: China, Hong Kong, etc.
 	2. Asset class: fixed income, equity, fund, commodity. There are sub categories of each asset class, e.g., equity has listed/unlisted/derivatives, and listed equity has financial and non-financial, derivatives has exchanged traded or over-the-counter.
 
-3. When running end of month reports, back office team uses the last working day as the official reporting date, e.g., Apr 29th is the report day for 2020 April. However, risk team (Daphne) seems to use the last calendar day as the reporting day, shall we align them? Because bond prices are different on these two days.
+3. When running DIF end of month reports, back office team uses the last business day as the official reporting date, e.g., 29th for end of 2020 April. However, when a portfolio contains securities from other markets, say US equities, we may need to combine those prices on 30th Apr because 30th is not a US holiday. This is a consideration to be put here.
+
+4. For fixed deposit, put into money market instruments.
+
+5. FX forwards is a tier 1 asset class.
+
+6. We may need to add duration data to all the bonds.
 
 
 

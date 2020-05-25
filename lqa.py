@@ -1,10 +1,11 @@
 # coding=utf-8
 #
-# Read the Bloomberg input file (Excel) and Geneva input file, then produce
-# master list files and LQA request files.
+# LQA related functions come here.
+# 
+# 1) Build LQA request
+# 2) Read LQA response
 # 
 
-from risk_report.utility import getCurrentDirectory
 from risk_report.blp import readBlpFile
 from risk_report.geneva import readGenevaFile
 from clamc_datafeed.feeder import fileToLines
@@ -141,8 +142,9 @@ def getGenevaLqaPositions(positions):
 	2) Add Id, IdType and Position fields for LQA processing.
 
 	"""
-	removeHTMfromInvestID = lambda investId: \
-		investId[0:12] if len(investId) > 15 and investId[-4:] == ' HTM' else investId
+	ISINfromInvestID = lambda investId: \
+		lognRaise('ISINfromInvestID(): failed to get ISIN from id') \
+		if len(investId) < 12 else investId[0:12]
 
 
 	isEquityType = lambda securityType: \
@@ -155,7 +157,7 @@ def getGenevaLqaPositions(positions):
 	addIdnType = lambda p: \
 		mergeDict(p, {'Id': p['InvestID'] + ' Equity', 'IdType': 'TICKER'}) \
 		if isEquityType(p['ThenByDescription']) else \
-	  	mergeDict(p, {'Id': removeHTMfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) \
+	  	mergeDict(p, {'Id': ISINfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) \
 	  	if isBondType(p['ThenByDescription']) else \
 	  	lognRaise('addIdnType(): unsupported type: {0}'.format(p['ThenByDescription']))
 
@@ -343,22 +345,3 @@ def lognContinue(msg, x):
 def lognRaise(msg):
 	logger.error(msg)
 	raise ValueError
-
-
-
-
-if __name__ == '__main__':
-	import logging.config
-	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
-
-	import argparse
-	parser = argparse.ArgumentParser(description='Process Bloomberg and Geneva holding File ' \
-										+ 'and Geneva holding file (DIF only), then produce '
-										+ 'LQA request files.')
-	parser.add_argument( 'blp_file', metavar='blp_file', type=str
-					   , help='Bloomberg holding file')
-	parser.add_argument( 'geneva_file', metavar='geneva_file', type=str
-				   , help='Geneva holding file')
-	args = parser.parse_args()
-
-	buildLqaRequestFromFiles(args.blp_file, args.geneva_file)
