@@ -17,6 +17,7 @@ Purpose of this application:
 	1. Location: China, Hong Kong, etc.
 	2. Asset class: fixed income, equity, fund, commodity. There are sub categories of each asset class, e.g., equity has listed/unlisted/derivatives, and listed equity has financial and non-financial, derivatives has exchanged traded or over-the-counter.
 
+3. When running end of month reports, back office team uses the last working day as the official reporting date, e.g., Apr 29th is the report day for 2020 April. However, risk team (Daphne) seems to use the last calendar day as the reporting day, shall we align them? Because bond prices are different on these two days.
 
 
 

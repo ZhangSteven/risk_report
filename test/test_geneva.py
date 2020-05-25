@@ -2,7 +2,7 @@
 # 
 
 import unittest2
-from risk_report.geneva import readGenevaFile
+from risk_report.geneva import readGenevaFile, readGenevaInvestmentPositionFile
 from risk_report.lqa import getGenevaLqaPositions
 from risk_report.utility import getCurrentDirectory
 from utils.iter import firstOf
@@ -50,6 +50,17 @@ class TestGeneva(unittest2.TestCase):
 
 
 
+	def testReadGenevaInvestmentPositionFile(self):
+		inputFile = join( getCurrentDirectory(), 'samples'
+						, 'DIF_20200429_investment_position.xlsx')
+		date, positions = readGenevaInvestmentPositionFile(inputFile)
+		self.assertEqual('2020-04-29', date)
+		positions = list(positions)
+		self.assertEqual(192, len(positions))
+		self.verifyInvestmentPosition(positions[3])
+
+
+
 	def verifyBondPosition(self, p):
 		self.assertEqual('USY70902AB04', p['Id'])
 		self.assertEqual('ISIN', p['IdType'])
@@ -77,3 +88,15 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual(2000000, p['Position'])
 		self.assertEqual('USD', p['Currency'])
 		self.assertEqual('2020-01-31', p['PeriodEndDate'])
+
+
+
+	def verifyInvestmentPosition(self, p):
+		self.assertEqual('2020-04-29', p['AsOfDate'])
+		self.assertEqual('19437', p['Portfolio'])
+		self.assertEqual('HKD', p['BookCurrency'])
+		self.assertEqual('Geneva', p['Remarks1'].split()[0])
+		self.assertEqual('Hong Kong Dollar', p['LocalCurrency'])
+		self.assertEqual('1299 HK', p['InvestID'])
+		self.assertAlmostEqual(71.95, p['LocalPrice'])
+		self.assertEqual(12749540, p['MarketValueBook'])

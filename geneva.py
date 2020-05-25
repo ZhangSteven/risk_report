@@ -4,66 +4,52 @@
 #
 
 from xlrd import open_workbook
-from clamc_datafeed.feeder import getTaxlotInfo
+from clamc_datafeed.feeder import getTaxlotInfo, getPositions, fileToLines
 from toolz.functoolz import compose
 from utils.utility import mergeDict
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
 
 
-def lognRaise(msg):
-	logger.error(msg)
-	raise ValueError
+"""
+	[Iterator] lines => ( [String] date (yyyy-mm-dd)
+						, [Iterator] positions
+						)
+
+	lines: an iterator over lines (each line being a List of values) of an Excel
+	spread sheet from Geneva investment positions report.
+	
+	Each position contains the below fields:
+
+	[String] Portfolio, [String] AsOfDate (yyyy-mm-dd), [String] BookCurrency,
+	[String] Remarks1
+"""
+getGenevaInvestmentPositions = compose(
+	lambda t: ( t[0]['PeriodEndDate']
+			  , map( lambda p: \
+			  			mergeDict( p
+			  					 , { 'AsOfDate': p['PeriodEndDate']
+			  					   , 'Remarks1': 'Geneva investment positions report'
+			  					   }
+			  					 )
+			  	   , t[1])
+			  )
+  , getPositions
+)
 
 
 
-def lognContinue(msg, x):
-	logger.debug(msg)
-	return x
-
-
-
-# def getGenevaLqaPositions(positions):
-# 	"""
-# 	[Iterable] positions => [Iterable] positions
-
-# 	Read Geneva consolidated tax lot positions, then do the following: 
-
-# 	1) take out those not suitable for liquidity test (cash, FX forward, etc.);
-# 	2) Add Id, IdType and Position fields for LQA processing.
-
-# 	"""
-# 	removeHTMfromInvestID = lambda investId: \
-# 		investId[0:12] if len(investId) > 15 and investId[-4:] == ' HTM' else investId
-
-
-# 	isEquityType = lambda securityType: \
-# 		securityType in [ 'Common Stock', 'Real Estate Investment Trust'
-# 						, 'Stapled Security', 'Exchange Trade Fund']
-
-# 	isBondType = lambda securityType: securityType.split()[-1] == 'Bond'
-
-
-# 	addIdnType = lambda p: \
-# 		mergeDict(p, {'Id': p['InvestID'] + ' Equity', 'IdType': 'TICKER'}) \
-# 		if isEquityType(p['ThenByDescription']) else \
-# 	  	mergeDict(p, {'Id': removeHTMfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) \
-# 	  	if isBondType(p['ThenByDescription']) else \
-# 	  	lognRaise('addIdnType(): unsupported type: {0}'.format(p['ThenByDescription']))
-
-
-# 	addPosition = lambda p: \
-# 		mergeDict(p, {'Position': p['Quantity']})
-
-
-# 	return compose(
-# 		partial(map, addIdnType)
-# 	  , partial(map, addPosition)
-# 	  , partial(filterfalse, lambda p: p['Quantity'] == 0)
-# 	  , partial(filterfalse, lambda p: p['ThenByDescription'] == 'Cash and Equivalents')
-# 	  , lambda positions: lognContinue('getGenevaLqaPositions(): start', positions)
-# 	)(positions)
+"""
+	[String] file (Geneva investment positions report, Excel format)
+		=> ([String] date (yyyy-mm-dd), [Iterator] positions)
+"""
+readGenevaInvestmentPositionFile = compose(
+	getGenevaInvestmentPositions
+  , fileToLines
+  , lambda file: lognContinue('readGenevaInvestmentPositionFile(): {0}'.format(file), file)
+)
 
 
 
@@ -142,3 +128,19 @@ def saveGenevaPositionToDB(file):
 
 	return 0
 # End of saveGenevaPositionToDB()
+
+
+
+"""
+	These are like utility functions, but they have to be deployed to 
+	each module, instead of being imported from one module. This is
+	because the logger uses the module name in the logging message.
+"""
+def lognRaise(msg):
+	logger.error(msg)
+	raise ValueError
+
+
+def lognContinue(msg, x):
+	logger.debug(msg)
+	return x

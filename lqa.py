@@ -7,8 +7,10 @@
 from risk_report.utility import getCurrentDirectory
 from risk_report.blp import readBlpFile
 from risk_report.geneva import readGenevaFile
+from clamc_datafeed.feeder import fileToLines
+from utils.iter import pop
 from functools import partial, reduce
-from itertools import chain, filterfalse
+from itertools import chain, filterfalse, dropwhile, takewhile
 from toolz.functoolz import compose
 from toolz.itertoolz import groupby as groupbyToolz
 from utils.utility import mergeDict
@@ -18,14 +20,39 @@ logger = logging.getLogger(__name__)
 
 
 
-def lognContinue(msg, x):
-	logger.debug(msg)
-	return x
+def getLqaData(lines):
+	"""
+	[Iterator] lines => [Dictionary] security id -> LQA result
+
+	lines are from the LQA response (saved as Excel) from Bloomberg.
+	"""
+	toPosition = lambda headers, line: dict(zip(headers, line))
+
+	# Take the lines between 'START-OF-DATA' and 'END-OF-DATA'
+	takeInBetween = compose(
+		lambda t: takewhile(lambda L: L[0] != 'END-OF-DATA', t[1])
+	  , lambda lines: (pop(lines), lines)
+	  , partial(dropwhile, lambda L: len(L) == 0 or L[0] != 'START-OF-DATA')
+	)
 
 
-def lognRaise(msg):
-	logger.error(msg)
-	raise ValueError
+	return compose(
+		lambda positions: dict(map(lambda p: (p['SECURITIES'], p), positions))
+	  , lambda t: map(partial(toPosition, t[0]), t[1])
+	  , lambda lines: (pop(lines), lines)
+	  , takeInBetween
+	)(lines)
+
+
+
+"""
+	[String] file (LQA result in Excel File) => [Dictionary] LQA result
+"""
+readLqaDataFromFile = compose(
+  	getLqaData
+  , fileToLines
+  , lambda file: lognContinue('readLqaDataFromFile(): {0}'.format(file), file)
+)
 
 
 
@@ -305,6 +332,17 @@ consolidate = compose(
 	, lambda d: d.values()
 	, partial(groupbyToolz, lambda p: p['Id'])
 )	
+
+
+
+def lognContinue(msg, x):
+	logger.debug(msg)
+	return x
+
+
+def lognRaise(msg):
+	logger.error(msg)
+	raise ValueError
 
 
 
