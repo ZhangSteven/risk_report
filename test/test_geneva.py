@@ -2,7 +2,7 @@
 # 
 
 import unittest2
-from risk_report.geneva import readGenevaFile, readGenevaInvestmentPositionFile
+from risk_report.geneva import readGenevaInvestmentPositionFile
 from risk_report.lqa import getGenevaLqaPositions
 from risk_report.utility import getCurrentDirectory
 from utils.iter import firstOf
@@ -12,12 +12,12 @@ from os.path import join
 
 
 findByName = lambda name, positions: \
-	firstOf(lambda p: p['TaxLotDescription'] == name, positions)
+	firstOf(lambda p: p['Description'] == name, positions)
 
 
 readGenevaLqaPositions = compose(
 	lambda t: (t[0], getGenevaLqaPositions(t[1]))
-  , readGenevaFile
+  , readGenevaInvestmentPositionFile
 )
 
 
@@ -29,8 +29,8 @@ class TestGeneva(unittest2.TestCase):
 
 
 
-	def testReadGenevaFile(self):
-		inputFile = join(getCurrentDirectory(), 'samples', '19437 tax lot 20200429.xlsx')
+	def testLqaFromGenevaInvestmentPositions(self):
+		inputFile = join(getCurrentDirectory(), 'samples', 'DIF_20200429_investment_position.xlsx')
 		date, positions = readGenevaLqaPositions(inputFile)
 		self.assertEqual('20200429', date)
 		positions = list(positions)
@@ -40,8 +40,8 @@ class TestGeneva(unittest2.TestCase):
 		
 
 
-	def testReadGenevaFile2(self):	# Tests a HTM bond
-		inputFile = join(getCurrentDirectory(), 'samples', '19437 tax lot 20200131.xlsx')
+	def testLqaFromGenevaInvestmentPositions2(self):	# Tests a HTM bond
+		inputFile = join(getCurrentDirectory(), 'samples', 'DIF_20200131_investment_position.xlsx')
 		date, positions = readGenevaLqaPositions(inputFile)
 		self.assertEqual('20200131', date)
 		positions = list(positions)
@@ -54,7 +54,7 @@ class TestGeneva(unittest2.TestCase):
 		inputFile = join( getCurrentDirectory(), 'samples'
 						, 'DIF_20200429_investment_position.xlsx')
 		date, positions = readGenevaInvestmentPositionFile(inputFile)
-		self.assertEqual('2020-04-29', date)
+		self.assertEqual('20200429', date)
 		positions = list(positions)
 		self.assertEqual(192, len(positions))
 		self.verifyInvestmentPosition(positions[3])
@@ -64,35 +64,35 @@ class TestGeneva(unittest2.TestCase):
 	def verifyBondPosition(self, p):
 		self.assertEqual('USY70902AB04', p['Id'])
 		self.assertEqual('ISIN', p['IdType'])
-		self.assertEqual('Corporate Bond', p['ThenByDescription'])
+		self.assertEqual('Corporate Bond', p['SortKey'])
 		self.assertEqual(3000000, p['Position'])
-		self.assertEqual('USD', p['Currency'])
-		self.assertEqual('2020-04-29', p['PeriodEndDate'])
+		self.assertEqual('United States Dollar', p['LocalCurrency'])
+		self.assertEqual('20200429', p['AsOfDate'])
 
 
 
 	def verifyEquityPosition(self, p):
 		self.assertEqual('2823 HK Equity', p['Id'])
 		self.assertEqual('TICKER', p['IdType'])
-		self.assertEqual('Exchange Trade Fund', p['ThenByDescription'])
+		self.assertEqual('Exchange Trade Fund', p['SortKey'])
 		self.assertEqual(530000, p['Position'])
-		self.assertEqual('HKD', p['Currency'])
-		self.assertEqual('2020-04-29', p['PeriodEndDate'])
+		self.assertEqual('Hong Kong Dollar', p['LocalCurrency'])
+		self.assertEqual('20200429', p['AsOfDate'])
 
 
 
 	def verifyBondPosition2(self, p):
 		self.assertEqual('XS1164776020', p['Id'])
 		self.assertEqual('ISIN', p['IdType'])
-		self.assertEqual('Corporate Bond', p['ThenByDescription'])
+		self.assertEqual('Corporate Bond', p['SortKey'])
 		self.assertEqual(2000000, p['Position'])
-		self.assertEqual('USD', p['Currency'])
-		self.assertEqual('2020-01-31', p['PeriodEndDate'])
+		self.assertEqual('United States Dollar', p['LocalCurrency'])
+		self.assertEqual('20200131', p['AsOfDate'])
 
 
 
 	def verifyInvestmentPosition(self, p):
-		self.assertEqual('2020-04-29', p['AsOfDate'])
+		self.assertEqual('20200429', p['AsOfDate'])
 		self.assertEqual('19437', p['Portfolio'])
 		self.assertEqual('HKD', p['BookCurrency'])
 		self.assertEqual('Geneva', p['Remarks1'].split()[0])

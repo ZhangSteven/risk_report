@@ -13,8 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 
-"""
-	[Iterator] lines => ( [String] date (yyyy-mm-dd)
+def getGenevaInvestmentPositions(lines):
+	"""
+	[Iterator] lines => ( [String] date (yyyymmdd)
 						, [Iterator] positions
 						)
 
@@ -25,19 +26,25 @@ logger = logging.getLogger(__name__)
 
 	[String] Portfolio, [String] AsOfDate (yyyymmdd), [String] BookCurrency,
 	[String] Remarks1
-"""
-getGenevaInvestmentPositions = compose(
-	lambda t: ( ''.join(t[0]['PeriodEndDate'].split('-'))
-			  , map( lambda p: \
-			  			mergeDict( p
-			  					 , { 'AsOfDate': p['PeriodEndDate']
-			  					   , 'Remarks1': 'Geneva investment positions report'
-			  					   }
-			  					 )
-			  	   , t[1])
-			  )
-  , getPositions
-)
+	"""
+
+	# [String] dt (yyyy-mm-dd) => [String] dt (yyyymmdd)
+	changeDateFormat = lambda dt: ''.join(dt.split('-'))
+
+	return compose(
+		lambda t: ( changeDateFormat(t[0]['PeriodEndDate'])
+				  , map( lambda p: \
+				  			mergeDict( p
+				  					 , { 'AsOfDate': changeDateFormat(p['PeriodEndDate'])
+				  					   , 'Remarks1': 'Geneva investment positions report'
+				  					   }
+				  					 )
+				  	   , t[1]
+				  	   )
+				  )
+	  , getPositions
+
+	)(lines)
 
 
 
@@ -50,31 +57,6 @@ readGenevaInvestmentPositionFile = compose(
   , fileToLines
   , lambda file: lognContinue('readGenevaInvestmentPositionFile(): {0}'.format(file), file)
 )
-
-
-
-# def readGenevaFile(file):
-# 	"""
-# 	[String] file => ( [String] date (yyyy-mm-dd)
-# 					 , [Iterable] positions
-# 					 )
-
-# 	Read a Geneva tax lot appraisal with accrued interest report, get the
-# 	raw consolidated positions, utilizing the getTaxlotInfo() function.
-# 	"""
-
-# 	# Convert yyyy-mm-dd to yyyymmdd
-# 	convertDateFormat = lambda d: ''.join(d.split('-'))
-
-
-# 	return \
-# 	compose(
-# 		lambda t: ( convertDateFormat(t[0]['PeriodEndDate'])
-# 				  , t[1].values()
-# 				  )
-# 	  , getTaxlotInfo
-# 	  , lambda file: lognContinue('readGenevaFile(): {0}'.format(file), file)
-# 	)(file)
 
 
 
