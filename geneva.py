@@ -4,7 +4,7 @@
 #
 
 from xlrd import open_workbook
-from clamc_datafeed.feeder import getTaxlotInfo, getPositions, fileToLines
+from clamc_datafeed.feeder import getPositions, fileToLines
 from toolz.functoolz import compose
 from utils.utility import mergeDict
 from functools import partial
@@ -23,11 +23,11 @@ logger = logging.getLogger(__name__)
 	
 	Each position contains the below fields:
 
-	[String] Portfolio, [String] AsOfDate (yyyy-mm-dd), [String] BookCurrency,
+	[String] Portfolio, [String] AsOfDate (yyyymmdd), [String] BookCurrency,
 	[String] Remarks1
 """
 getGenevaInvestmentPositions = compose(
-	lambda t: ( t[0]['PeriodEndDate']
+	lambda t: ( ''.join(t[0]['PeriodEndDate'].split('-'))
 			  , map( lambda p: \
 			  			mergeDict( p
 			  					 , { 'AsOfDate': p['PeriodEndDate']
@@ -43,7 +43,7 @@ getGenevaInvestmentPositions = compose(
 
 """
 	[String] file (Geneva investment positions report, Excel format)
-		=> ([String] date (yyyy-mm-dd), [Iterator] positions)
+		=> ([String] date (yyyymmdd), [Iterator] positions)
 """
 readGenevaInvestmentPositionFile = compose(
 	getGenevaInvestmentPositions
@@ -53,28 +53,28 @@ readGenevaInvestmentPositionFile = compose(
 
 
 
-def readGenevaFile(file):
-	"""
-	[String] file => ( [String] date (yyyy-mm-dd)
-					 , [Iterable] positions
-					 )
+# def readGenevaFile(file):
+# 	"""
+# 	[String] file => ( [String] date (yyyy-mm-dd)
+# 					 , [Iterable] positions
+# 					 )
 
-	Read a Geneva tax lot appraisal with accrued interest report, get the
-	raw consolidated positions, utilizing the getTaxlotInfo() function.
-	"""
+# 	Read a Geneva tax lot appraisal with accrued interest report, get the
+# 	raw consolidated positions, utilizing the getTaxlotInfo() function.
+# 	"""
 
-	# Convert yyyy-mm-dd to yyyymmdd
-	convertDateFormat = lambda d: ''.join(d.split('-'))
+# 	# Convert yyyy-mm-dd to yyyymmdd
+# 	convertDateFormat = lambda d: ''.join(d.split('-'))
 
 
-	return \
-	compose(
-		lambda t: ( convertDateFormat(t[0]['PeriodEndDate'])
-				  , t[1].values()
-				  )
-	  , getTaxlotInfo
-	  , lambda file: lognContinue('readGenevaFile(): {0}'.format(file), file)
-	)(file)
+# 	return \
+# 	compose(
+# 		lambda t: ( convertDateFormat(t[0]['PeriodEndDate'])
+# 				  , t[1].values()
+# 				  )
+# 	  , getTaxlotInfo
+# 	  , lambda file: lognContinue('readGenevaFile(): {0}'.format(file), file)
+# 	)(file)
 
 
 

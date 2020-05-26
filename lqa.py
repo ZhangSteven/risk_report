@@ -7,7 +7,7 @@
 # 
 
 from risk_report.blp import readBlpFile
-from risk_report.geneva import readGenevaFile
+from risk_report.geneva import readGenevaInvestmentPositionFile
 from clamc_datafeed.feeder import fileToLines
 from utils.iter import pop
 from functools import partial, reduce
@@ -104,7 +104,7 @@ def buildLqaRequestFromFiles(blpFile, genevaFile):
 	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
 	processGenevaFile = compose(
 		lambda t: (t[0], getGenevaLqaPositions(t[1]))
-	  , readGenevaFile
+	  , readGenevaInvestmentPositionFile
 	)
 
 
@@ -177,7 +177,7 @@ def noNeedLiquidityGeneva(position):
 	deposit), in this case this function return True. Otherwise False.
 	"""
 	return True \
-	if position['Quantity'] == 0 or position['ThenByDescription'] in \
+	if position['Quantity'] == 0 or position['SortKey'] in \
 	['Cash and Equivalents', 'Fixed Deposit', 'Open-End Fund'] \
 	else False
 
@@ -193,17 +193,11 @@ def getGenevaLqaPositions(positions):
 	2) Add Id, IdType and Position fields for LQA processing.
 
 	"""
-	# addIdnType = lambda p: \
-	# 	mergeDict(p, {'Id': p['InvestID'] + ' Equity', 'IdType': 'TICKER'}) \
-	# 	if isEquityType(p['ThenByDescription']) else \
-	#   	mergeDict(p, {'Id': ISINfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) \
-	#   	if isBondType(p['ThenByDescription']) else \
-	#   	lognRaise('addIdnType(): unsupported type: {0}'.format(p['ThenByDescription']))
 
 	# [Dictonary] p => [Dictionary] enriched position with id and idType
 	addIdnType = compose(
 		lambda t: mergeDict(t[2], {'Id': t[0], 'IdType': t[1]})
-	  , lambda p: (*investIdToLqaId(p['InvestID'], p['ThenByDescription']), p)
+	  , lambda p: (*investIdToLqaId(p['InvestID'], p['SortKey']), p)
 	)
 
 
@@ -368,12 +362,12 @@ if __name__ == '__main__':
 
 	import argparse
 	parser = argparse.ArgumentParser(description='Process Bloomberg and Geneva holding File ' \
-										+ 'and Geneva holding file (DIF only), then produce '
-										+ 'LQA request files.')
+										+ 'and Geneva investment positions report (DIF only), ' \
+										+ 'then produce LQA request files.')
 	parser.add_argument( 'blp_file', metavar='blp_file', type=str
 					   , help='Bloomberg holding file')
 	parser.add_argument( 'geneva_file', metavar='geneva_file', type=str
-				   , help='Geneva holding file')
+				   , help='Geneva investment positions report')
 	args = parser.parse_args()
 
 	buildLqaRequestFromFiles(args.blp_file, args.geneva_file)
