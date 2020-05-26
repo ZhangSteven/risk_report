@@ -297,21 +297,11 @@ def buildLqaRequest(name, date, positions):
 
 	Side effect: create a lqa request file
 	"""
-	# LQAHeaders = [ 'LQA_POSITION_TAG_1'
-	# 		 	 , 'LQA_TGT_LIQUIDATION_VOLUME'
-	# 		 	 , 'LQA_SOURCE_TGT_LIQUIDATION_COST'
-	# 		 	 , 'LQA_FACTOR_TGT_LIQUIDATION_COST'
-	# 		 	 , 'LQA_TGT_LIQUIDATION_HORIZON'
-	# 		 	 , 'LQA_TGT_COST_CONF_LEVL'
-	# 		 	 , 'LQA_MODEL_AS_OF_DATE'
-	# 		 	 ]
-
-
 	lqaLine = lambda name, date, position: \
 		', '.join([ position['Id']
 				  , position['IdType']
 				  , 'LQA_POSITION_TAG_1={0}'.format(name)
-				  , 'LQA_TGT_LIQUIDATION_VOLUME={0}'.format(r['Position'])
+				  , 'LQA_TGT_LIQUIDATION_VOLUME={0}'.format(position['Position'])
 				  , 'LQA_SOURCE_TGT_LIQUIDATION_COST={0}'.\
 				  		format('PR' if position['IdType'] == 'TICKER' else 'BA')
 				  , 'LQA_FACTOR_TGT_LIQUIDATION_COST={0}'.\
@@ -322,50 +312,9 @@ def buildLqaRequest(name, date, positions):
 				  ])
 
 
-	"""
-	  [String] name (name of the lqa request list, such as 'master_clo')
-	, [String] date (yyyymmdd)
-	, [Dictionary] r (position)
-		=> [Dictionary] LQA record
-
-	LQA_SOURCE_TGT_LIQUIDATION_COST: price source, 'BA' (bid ask) for bond and 
-		'PR' (public price) for equity
-
-	"""
-	# lqaRecord = lambda name, date, r: \
-	# 	{ 'Identifier ID': r['Id']
-	# 	, 'Identifier ID Type': r['IdType']
-	# 	, 'LQA_POSITION_TAG_1': name
-	# 	, 'LQA_TGT_LIQUIDATION_VOLUME': str(r['Position'])
-	# 	, 'LQA_SOURCE_TGT_LIQUIDATION_COST': 'PR' if r['IdType'] == 'TICKER' else 'BA'
-	# 	, 'LQA_FACTOR_TGT_LIQUIDATION_COST': '20' if r['IdType'] == 'TICKER' else '1'
-	# 	, 'LQA_TGT_LIQUIDATION_HORIZON': '1'
-	# 	, 'LQA_TGT_COST_CONF_LEVL': '95'
-	# 	, 'LQA_MODEL_AS_OF_DATE': date
-	# 	}
-
-
-	"""
-		[Headers] headers, [Dictionary] r (LQA record) => [String] line
-	"""
-	# outputLine = lambda headers, r: \
-	# 	'|'.join([r['Identifier ID'], r['Identifier ID Type'], str(len(headers))]) + '|' + \
-	# 	'|'.join(headers) + '|' + '|'.join(map(lambda h: r[h], headers)) + '|'
-
-
 	lqaFile = 'LQA_request_'+ name + '_' + date + '.txt'
-	# lqaLines = map( partial(outputLine, LQAHeaders)
-	# 			  , map(partial(lqaRecord, name, date), positions))
-
-
-	# outputString = \
-	# 	''.join(open('LQA_template_start.txt', 'r')) + \
-	# 	'\n'.join(lqaLines) + \
-	# 	''.join(open('LQA_template_end.txt', 'r'))
-
 
 	with open(lqaFile, 'w') as outputFile:
-		# outputFile.write(outputString)
 		outputFile.write('\n'.join(map(partial(lqaLine, name, date), positions)))
 
 
@@ -409,3 +358,23 @@ def lognContinue(msg, x):
 def lognRaise(msg):
 	logger.error(msg)
 	raise ValueError
+
+
+
+
+if __name__ == '__main__':
+	import logging.config
+	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
+
+	import argparse
+	parser = argparse.ArgumentParser(description='Process Bloomberg and Geneva holding File ' \
+										+ 'and Geneva holding file (DIF only), then produce '
+										+ 'LQA request files.')
+	parser.add_argument( 'blp_file', metavar='blp_file', type=str
+					   , help='Bloomberg holding file')
+	parser.add_argument( 'geneva_file', metavar='geneva_file', type=str
+				   , help='Geneva holding file')
+	args = parser.parse_args()
+
+	buildLqaRequestFromFiles(args.blp_file, args.geneva_file)
+
