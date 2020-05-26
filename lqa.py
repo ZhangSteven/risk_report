@@ -132,6 +132,57 @@ def buildLqaRequestFromFiles(blpFile, genevaFile):
 
 
 
+def investIdToLqaId(investId, assetType):
+	"""
+	[String] investId (InvestID field from Geneva reports)
+	[String] assetType (Geneva asset type: common stock, corporate bond etc.)
+		=> ( [String] lqa id,
+		   , [String] lqa id type
+		   )
+
+	# FIXME: this function is incomplete, some assetType like open ended fund
+	is not handled.
+	"""
+	ISINfromInvestID = lambda investId: \
+		lognRaise('ISINfromInvestID(): failed to get ISIN from id: {0}'.format(investId)) \
+		if len(investId) < 12 else investId[0:12]
+
+
+	isEquityType = lambda assetType: \
+		assetType in [ 'Common Stock', 'Real Estate Investment Trust'
+					 , 'Stapled Security', 'Exchange Trade Fund']
+
+	isBondType = lambda assetType: assetType.split()[-1] == 'Bond'
+
+
+	return \
+	(investId + ' Equity', 'TICKER') if isEquityType(assetType) else \
+	(ISINfromInvestID(investId), 'ISIN') if isBondType(assetType) else \
+	lognRaise('investIdToLqaId(): unsupported type: {0}'.format(assetType))
+
+
+
+def noNeedLiquidityGeneva(position):
+	"""
+	[Dictionary] position => [Bool] no need to measure liquidity
+
+	Certain positions do not need liquidity measure, 
+
+	1. quantity = 0
+	2. cash
+	3. money market instruments
+	4. open ended fund
+
+	such as cash or money market instruments (fixed
+	deposit), in this case this function return True. Otherwise False.
+	"""
+	return True \
+	if position['Quantity'] == 0 or position['ThenByDescription'] in \
+	['Cash and Equivalents', 'Fixed Deposit', 'Open-End Fund'] \
+	else False
+
+
+
 def getGenevaLqaPositions(positions):
 	"""
 	[Iterable] positions => [Iterable] positions
@@ -142,26 +193,21 @@ def getGenevaLqaPositions(positions):
 	2) Add Id, IdType and Position fields for LQA processing.
 
 	"""
-	ISINfromInvestID = lambda investId: \
-		lognRaise('ISINfromInvestID(): failed to get ISIN from id') \
-		if len(investId) < 12 else investId[0:12]
+	# addIdnType = lambda p: \
+	# 	mergeDict(p, {'Id': p['InvestID'] + ' Equity', 'IdType': 'TICKER'}) \
+	# 	if isEquityType(p['ThenByDescription']) else \
+	#   	mergeDict(p, {'Id': ISINfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) \
+	#   	if isBondType(p['ThenByDescription']) else \
+	#   	lognRaise('addIdnType(): unsupported type: {0}'.format(p['ThenByDescription']))
+
+	# [Dictonary] p => [Dictionary] enriched position with id and idType
+	addIdnType = compose(
+		lambda t: mergeDict(t[2], {'Id': t[0], 'IdType': t[1]})
+	  , lambda p: (*investIdToLqaId(p['InvestID'], p['ThenByDescription']), p)
+	)
 
 
-	isEquityType = lambda securityType: \
-		securityType in [ 'Common Stock', 'Real Estate Investment Trust'
-						, 'Stapled Security', 'Exchange Trade Fund']
-
-	isBondType = lambda securityType: securityType.split()[-1] == 'Bond'
-
-
-	addIdnType = lambda p: \
-		mergeDict(p, {'Id': p['InvestID'] + ' Equity', 'IdType': 'TICKER'}) \
-		if isEquityType(p['ThenByDescription']) else \
-	  	mergeDict(p, {'Id': ISINfromInvestID(p['InvestID']), 'IdType': 'ISIN'}) \
-	  	if isBondType(p['ThenByDescription']) else \
-	  	lognRaise('addIdnType(): unsupported type: {0}'.format(p['ThenByDescription']))
-
-
+	# Add a field 'Postion', useful in consolidation with Bloommberg Lqa positions
 	addPosition = lambda p: \
 		mergeDict(p, {'Position': p['Quantity']})
 
@@ -169,8 +215,7 @@ def getGenevaLqaPositions(positions):
 	return compose(
 		partial(map, addIdnType)
 	  , partial(map, addPosition)
-	  , partial(filterfalse, lambda p: p['Quantity'] == 0)
-	  , partial(filterfalse, lambda p: p['ThenByDescription'] == 'Cash and Equivalents')
+	  , partial(filterfalse, noNeedLiquidityGeneva)
 	  , lambda positions: lognContinue('getGenevaLqaPositions(): start', positions)
 	)(positions)
 
@@ -245,18 +290,36 @@ def getBlpLqaPositions(positions):
 
 def buildLqaRequest(name, date, positions):
 	"""
-	[Iterable] positions => [String] output lqa request file name
+	[String] name (name of the lqa request, 'masterlist_clo' etc.)
+	[String] date (yyyy-mm-dd)
+	[Iterable] positions 
+		=> [String] output lqa request file name
 
 	Side effect: create a lqa request file
 	"""
-	LQAHeaders = [ 'LQA_POSITION_TAG_1'
-			 	 , 'LQA_TGT_LIQUIDATION_VOLUME'
-			 	 , 'LQA_SOURCE_TGT_LIQUIDATION_COST'
-			 	 , 'LQA_FACTOR_TGT_LIQUIDATION_COST'
-			 	 , 'LQA_TGT_LIQUIDATION_HORIZON'
-			 	 , 'LQA_TGT_COST_CONF_LEVL'
-			 	 , 'LQA_MODEL_AS_OF_DATE'
-			 	 ]
+	# LQAHeaders = [ 'LQA_POSITION_TAG_1'
+	# 		 	 , 'LQA_TGT_LIQUIDATION_VOLUME'
+	# 		 	 , 'LQA_SOURCE_TGT_LIQUIDATION_COST'
+	# 		 	 , 'LQA_FACTOR_TGT_LIQUIDATION_COST'
+	# 		 	 , 'LQA_TGT_LIQUIDATION_HORIZON'
+	# 		 	 , 'LQA_TGT_COST_CONF_LEVL'
+	# 		 	 , 'LQA_MODEL_AS_OF_DATE'
+	# 		 	 ]
+
+
+	lqaLine = lambda name, date, position: \
+		', '.join([ position['Id']
+				  , position['IdType']
+				  , 'LQA_POSITION_TAG_1={0}'.format(name)
+				  , 'LQA_TGT_LIQUIDATION_VOLUME={0}'.format(r['Position'])
+				  , 'LQA_SOURCE_TGT_LIQUIDATION_COST={0}'.\
+				  		format('PR' if position['IdType'] == 'TICKER' else 'BA')
+				  , 'LQA_FACTOR_TGT_LIQUIDATION_COST={0}'.\
+				  		format(20 if position['IdType'] == 'TICKER' else 1)
+				  , 'LQA_TGT_LIQUIDATION_HORIZON=1'
+				  , 'LQA_TGT_COST_CONF_LEVL=95'
+				  , 'LQA_MODEL_AS_OF_DATE={0}'.format(date)
+				  ])
 
 
 	"""
@@ -269,40 +332,41 @@ def buildLqaRequest(name, date, positions):
 		'PR' (public price) for equity
 
 	"""
-	lqaRecord = lambda name, date, r: \
-		{ 'Identifier ID': r['Id']
-		, 'Identifier ID Type': r['IdType']
-		, 'LQA_POSITION_TAG_1': name
-		, 'LQA_TGT_LIQUIDATION_VOLUME': str(r['Position'])
-		, 'LQA_SOURCE_TGT_LIQUIDATION_COST': 'PR' if r['IdType'] == 'TICKER' else 'BA'
-		, 'LQA_FACTOR_TGT_LIQUIDATION_COST': '20' if r['IdType'] == 'TICKER' else '1'
-		, 'LQA_TGT_LIQUIDATION_HORIZON': '1'
-		, 'LQA_TGT_COST_CONF_LEVL': '95'
-		, 'LQA_MODEL_AS_OF_DATE': date
-		}
+	# lqaRecord = lambda name, date, r: \
+	# 	{ 'Identifier ID': r['Id']
+	# 	, 'Identifier ID Type': r['IdType']
+	# 	, 'LQA_POSITION_TAG_1': name
+	# 	, 'LQA_TGT_LIQUIDATION_VOLUME': str(r['Position'])
+	# 	, 'LQA_SOURCE_TGT_LIQUIDATION_COST': 'PR' if r['IdType'] == 'TICKER' else 'BA'
+	# 	, 'LQA_FACTOR_TGT_LIQUIDATION_COST': '20' if r['IdType'] == 'TICKER' else '1'
+	# 	, 'LQA_TGT_LIQUIDATION_HORIZON': '1'
+	# 	, 'LQA_TGT_COST_CONF_LEVL': '95'
+	# 	, 'LQA_MODEL_AS_OF_DATE': date
+	# 	}
 
 
 	"""
 		[Headers] headers, [Dictionary] r (LQA record) => [String] line
 	"""
-	outputLine = lambda headers, r: \
-		'|'.join([r['Identifier ID'], r['Identifier ID Type'], str(len(headers))]) + '|' + \
-		'|'.join(headers) + '|' + '|'.join(map(lambda h: r[h], headers)) + '|'
+	# outputLine = lambda headers, r: \
+	# 	'|'.join([r['Identifier ID'], r['Identifier ID Type'], str(len(headers))]) + '|' + \
+	# 	'|'.join(headers) + '|' + '|'.join(map(lambda h: r[h], headers)) + '|'
 
 
-	lqaFile = 'LQA_'+ name + '_' + date + '.req'
-	lqaLines = map( partial(outputLine, LQAHeaders)
-				  , map(partial(lqaRecord, name, date), positions))
+	lqaFile = 'LQA_request_'+ name + '_' + date + '.txt'
+	# lqaLines = map( partial(outputLine, LQAHeaders)
+	# 			  , map(partial(lqaRecord, name, date), positions))
 
 
-	outputString = \
-		''.join(open('LQA_template_start.txt', 'r')) + \
-		'\n'.join(lqaLines) + \
-		''.join(open('LQA_template_end.txt', 'r'))
+	# outputString = \
+	# 	''.join(open('LQA_template_start.txt', 'r')) + \
+	# 	'\n'.join(lqaLines) + \
+	# 	''.join(open('LQA_template_end.txt', 'r'))
 
 
 	with open(lqaFile, 'w') as outputFile:
-		outputFile.write(outputString)
+		# outputFile.write(outputString)
+		outputFile.write('\n'.join(map(partial(lqaLine, name, date), positions)))
 
 
 	return lqaFile
