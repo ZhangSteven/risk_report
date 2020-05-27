@@ -11,7 +11,7 @@ Purpose of this application:
 
 ## Considerations
 
-1. What is the datasource for 19437? There are fees not included in the tax lot report such as "audit fees payable". Need to ask Kicoo.
+1. Blp positions need to be enriched by "AsOfDate", "BookCurrency" and "Remarks1" field. Add test case for this.
 
 2. Asset allocation: based on a list of filters.
 	1. Location: China, Hong Kong, etc.

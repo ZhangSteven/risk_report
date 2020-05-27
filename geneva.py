@@ -22,10 +22,9 @@ def getGenevaInvestmentPositions(lines):
 	lines: an iterator over lines (each line being a List of values) of an Excel
 	spread sheet from Geneva investment positions report.
 	
-	Each position contains the below fields:
+	Each position are enriched by the below fields:
 
-	[String] Portfolio, [String] AsOfDate (yyyymmdd), [String] BookCurrency,
-	[String] Remarks1
+	[String] AsOfDate (yyyymmdd), [String] Remarks1
 	"""
 
 	# [String] dt (yyyy-mm-dd) => [String] dt (yyyymmdd)

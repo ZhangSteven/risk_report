@@ -2,27 +2,46 @@
 #
 # Asset allocation logic for SFC
 # 
-
+from risk_report.lqa import getBlpIdnType, getGenevaIdnType
+from toolz.functoolz import compose
+from functools import partial
+from itertools import filterfalse
 import logging
 logger = logging.getLogger(__name__)
 
 
 
-def country(investment):
+def positionsByCountry(blpData, country, positions):
 	"""
-	The logic is:
-
-	1) For equity asset class, use Bloomberg "CNTRY_ISSUE_ISO" field
-	2) For other asset class other than cash, use Bloomberg "CNTRY_OF_RISK" field
-	3) For cash, it will throw an exception because country does not make sense
-		in this case.
+	[Dictionary] blpData, [String] country, [Iterator] positions
+		=> [Iterabor] positions (from that country)
 	"""
-	return 0
+	countryNotApplicable = lambda p: \
+		True if getAssetType(blpData, p)[0] == 'Cash' else False
+
+
+	def assignCountryToPosition(blpData, p):
+		logger.debug('assignCountryToPosition(): {0}'.getIdnType(p))
+		return country(blpData, p)
+
+
+	return compose(
+		partial(map, lambda t: t[1])
+	  , partial(filter, lambda t: t[0] == country)
+	  , partial(map, partial(assignCountryToPosition, blpData))
+	  , partial(filterfalse, countryNotApplicable)
+	)(positions)
 
 
 
-def assetClass(investment):
+def getAssetType(blpData, position):
 	"""
+	[Dictionary] position (a Geneva or Blp position)
+		=> [Tuple] asset type
+
+	The asset type is a tuple containing the category and sub category, like
+	('Cash', ), ('Fixed Income', 'Corporate') or ('Equity', 'Listed')
+
 	The logic is:
 
 	If it's cash on hand, payables and receivables, money market instrucments 
@@ -44,7 +63,56 @@ def assetClass(investment):
 	Govt -> Fixed Income, sub catetory "Government Bond"
 	Comdty -> Derivatives, sub category "Derivatives"
 	"""
-	return 0
+	isGenevaCash = lambda position: \
+		position['SortKey'] == 'Cash and Equivalents'
+
+
+	isBlpCash = lambda position: \
+		position['Asset Type'] == 'Cash'
+
+
+	isCash = lambda position: \
+		isGenevaCash(position) if isGenevaPosition(position) else \
+		isBlpCash(position)
+
+
+	isMoneyMarket = 
+	
+	return ()
+
+
+
+isGenevaPosition = lambda p: p['Remarks1'].lower().startswith('geneva')
+
+
+
+def getIdnType(position):
+	"""
+	[Dictionary] position (a Geneva or Blp position)
+		=> [Tuple] (id, idType)
+	"""
+	if isGenevaPosition(position):
+		return getGenevaIdnType(position)
+	else:
+		return getBlpIdnType(position)
+
+
+
+def country(blpData, position):
+	"""
+	[Dictionary] blpInfo => [String] country
+
+	1) For equity asset class, use "CNTRY_ISSUE_ISO" field value
+	2) For other asset class, use "CNTRY_OF_RISK" field value
+
+	Note that country() does not apply to Cash.
+	"""
+	# FIXME: need handling when blp does not contain data for this position
+	blpInfo = blpData[getIdnType(position)[0]]
+
+	return \
+	blpInfo['CNTRY_ISSUE_ISO'] if blpInfo['MARKET_SECTOR_DES'] = 'Equity' else \
+	blpInfo['CNTRY_OF_RISK']
 
 
 

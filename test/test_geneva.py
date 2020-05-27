@@ -68,6 +68,9 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual(3000000, p['Position'])
 		self.assertEqual('United States Dollar', p['LocalCurrency'])
 		self.assertEqual('20200429', p['AsOfDate'])
+		self.assertEqual('19437', p['Portfolio'])
+		self.assertEqual('HKD', p['BookCurrency'])
+		self.assertEqual('Geneva', p['Remarks1'][0:6])
 
 
 
@@ -78,6 +81,9 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual(530000, p['Position'])
 		self.assertEqual('Hong Kong Dollar', p['LocalCurrency'])
 		self.assertEqual('20200429', p['AsOfDate'])
+		self.assertEqual('19437', p['Portfolio'])
+		self.assertEqual('HKD', p['BookCurrency'])
+		self.assertEqual('Geneva', p['Remarks1'][0:6])
 
 
 
@@ -88,6 +94,9 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual(2000000, p['Position'])
 		self.assertEqual('United States Dollar', p['LocalCurrency'])
 		self.assertEqual('20200131', p['AsOfDate'])
+		self.assertEqual('19437', p['Portfolio'])
+		self.assertEqual('HKD', p['BookCurrency'])
+		self.assertEqual('Geneva', p['Remarks1'][0:6])
 
 
 

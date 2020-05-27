@@ -10,3 +10,4 @@ logs/
 # igore the csv and req output file
 *.csv
 *.req
+*.txt

@@ -132,12 +132,11 @@ def buildLqaRequestFromFiles(blpFile, genevaFile):
 
 
 
-def investIdToLqaId(investId, assetType):
+def getGenevaIdnType(position):
 	"""
-	[String] investId (InvestID field from Geneva reports)
-	[String] assetType (Geneva asset type: common stock, corporate bond etc.)
-		=> ( [String] lqa id,
-		   , [String] lqa id type
+	[Dictionary] position
+		=> ( [String] id,
+		   , [String] id type
 		   )
 
 	# FIXME: this function is incomplete, some assetType like open ended fund
@@ -154,11 +153,13 @@ def investIdToLqaId(investId, assetType):
 
 	isBondType = lambda assetType: assetType.split()[-1] == 'Bond'
 
+	investId, assetType = position['InvestID'], position['SortKey']
+	
 
 	return \
 	(investId + ' Equity', 'TICKER') if isEquityType(assetType) else \
 	(ISINfromInvestID(investId), 'ISIN') if isBondType(assetType) else \
-	lognRaise('investIdToLqaId(): unsupported type: {0}'.format(assetType))
+	lognRaise('getGenevaIdnType(): unsupported type: {0}'.format(assetType))
 
 
 
@@ -197,7 +198,7 @@ def getGenevaLqaPositions(positions):
 	# [Dictonary] p => [Dictionary] enriched position with id and idType
 	addIdnType = compose(
 		lambda t: mergeDict(t[2], {'Id': t[0], 'IdType': t[1]})
-	  , lambda p: (*investIdToLqaId(p['InvestID'], p['SortKey']), p)
+	  , lambda p: (*getGenevaIdnType(p), p)
 	)
 
 
@@ -242,10 +243,11 @@ def getBlpLqaPositions(positions):
 	)
 
 
-	updatePositionId = lambda p: \
-		mergeDict(p, {'Id': p['Name'] + ' Equity', 'IdType': 'TICKER'}) \
-		if p['Asset Type'] == 'Equity' else \
-		mergeDict(p, {'Id': p['ISIN'], 'IdType': 'ISIN'})
+	# [Dictionary] position => [Dictioanry] position with id and idtype
+	updatePositionId = compose(
+		lambda t: mergeDict(t[2], {'Id': t[0], 'IdType': t[1]})
+	  , lambda position: (*getBlpIdnType(position), position)
+	)
 
 
 	isCLOPortfolio = lambda p: p['Account Code'] in \
@@ -279,6 +281,21 @@ def getBlpLqaPositions(positions):
 	  , removeUnwantedPositions		
 	  , lambda positions: lognContinue('getBlpLqaPositions(): start', positions)
 	)(positions)
+
+
+
+def getBlpIdnType(position):
+	"""
+	[Dictionary] position => [Tuple] (id, idType)
+	
+	Assume the position contain fields 'Name' (ticker), 'ISIN' and 'Asset Type'
+	"""
+	if position['Asset Type'] == 'Equity':
+		return (position['Name'] + ' Equity', 'TICKER')
+	elif position['ISIN'] == '':
+		return (position['Name'], 'TICKER')
+	else:
+		return (position['ISIN'], 'ISIN')
 
 
 
