@@ -139,11 +139,12 @@ def getGenevaIdnType(position):
 		   , [String] id type
 		   )
 
-	# FIXME: this function is incomplete, some assetType like open ended fund
-	is not handled.
+	NOTE: this function should never throw an exception. So we make it always
+	return something even if we cannot determine what should be the asset type.
 	"""
 	ISINfromInvestID = lambda investId: \
-		lognRaise('ISINfromInvestID(): failed to get ISIN from id: {0}'.format(investId)) \
+		lognContinue( 'getGenevaIdnType(): ISINfromInvestID: special case: {0}'.format(investId)
+					, investId) \
 		if len(investId) < 12 else investId[0:12]
 
 
@@ -159,7 +160,8 @@ def getGenevaIdnType(position):
 	return \
 	(investId + ' Equity', 'TICKER') if isEquityType(assetType) else \
 	(ISINfromInvestID(investId), 'ISIN') if isBondType(assetType) else \
-	lognRaise('getGenevaIdnType(): unsupported type: {0}'.format(assetType))
+	lognContinue( 'getGenevaIdnType(): special case: {0}'.format(position['InvestID'])
+				, (position['InvestID'], position['SortKey']))
 
 
 

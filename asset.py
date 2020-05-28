@@ -35,6 +35,41 @@ def positionsByCountry(blpData, country, positions):
 
 
 
+isPrivateSecurity = lambda position: \
+	False if isGenevaPosition(position) else position['Name'].startswith('.') 
+
+
+
+isCash = lambda position: \
+	position['SortKey'] == 'Cash and Equivalents' if isGenevaPosition(position) \
+	else position['Asset Type'] == 'Cash'
+
+
+
+isMoneyMarket = lambda position: \
+	position['SortKey'] == 'Fixed Deposit' if isGenevaPosition(position) \
+	else position['Asset Type'] == 'Money Market'
+
+
+
+isRepo = lambda position: \
+	False if isGenevaPosition(position) \
+	else position['Asset Type'] == 'Repo Liability'
+
+
+
+isFxForward = lambda position: \
+	position['SortKey'] == 'FX Forward' if isGenevaPosition(position) \
+	else position['Asset Type'] == 'Foreign Exchange Forward'
+
+
+
+isFund = lambda position: \
+	position['SortKey'] in ['Open-End Fund', 'Exchange Trade Fund', 'Real Estate Investment Trust'] \
+	if isGenevaPosition(position) else position['Industry Sector'] == 'Funds'
+
+
+
 def getAssetType(blpData, position):
 	"""
 	[Dictionary] position (a Geneva or Blp position)
@@ -52,33 +87,6 @@ def getAssetType(blpData, position):
 	"""
 	logger.debug('getAssetType(): {0}'.format(getIdnType(position)))
 
-	isPrivateSecurity = lambda position: \
-		False if isGenevaPosition(position) else position['Name'].startswith('.') 
-
-
-	isCash = lambda position: \
-		position['SortKey'] == 'Cash and Equivalents' if isGenevaPosition(position) \
-		else position['Asset Type'] == 'Cash'
-
-
-	isMoneyMarket = lambda position: \
-		position['SortKey'] == 'Fixed Deposit' if isGenevaPosition(position) \
-		else position['Asset Type'] == 'Money Market'
-
-
-	isRepo = lambda position: \
-		False if isGenevaPosition(position) \
-		else position['Asset Type'] == 'Repo Liability'
-
-
-	isFxForward = lambda position: \
-		position['SortKey'] == 'FX Forward' if isGenevaPosition(position) \
-		else position['Asset Type'] == 'Foreign Exchange Forward'
-
-
-	isFund = lambda position: \
-		position['SortKey'] in ['Open-End Fund', 'Exchange Trade Fund', 'Real Estate Investment Trust'] \
-		if isGenevaPosition(position) else position['Industry Sector'] == 'Funds'
 
 
 	getFundType = lambda position: \
@@ -251,7 +259,7 @@ def getCountry(blpData, position):
 		blpInfo = blpData[getIdnType(position)[0]]
 
 		return \
-		blpInfo['CNTRY_ISSUE_ISO'] if blpInfo['MARKET_SECTOR_DES'] = 'Equity' else \
+		blpInfo['CNTRY_ISSUE_ISO'] if blpInfo['MARKET_SECTOR_DES'] == 'Equity' else \
 		blpInfo['CNTRY_OF_RISK']
 
 	else:

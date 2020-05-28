@@ -5,9 +5,14 @@
 # 
 
 from risk_report.utility import getCurrentDirectory
+from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
+							, isRepo, isFxForward, getIdnType
+from risk_report.geneva import readGenevaInvestmentPositionFile
 from clamc_datafeed.feeder import getRawPositions, fileToLines
-from toolz.functoolz import compose
+from utils.utility import writeCsv
+from toolz.functoolz import compose, juxt
 from functools import partial
+from itertools import filterfalse, chain
 from os.path import join
 import logging
 logger = logging.getLogger(__name__)
@@ -15,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 """
-	[String] file => [Dictionary] data (LQA ID -> [Dictioanry] blp information)
+	[String] file => [Dictionary] data (ID -> [Dictioanry] blp information)
 	
 	Assume Blp data is stored in an Excel file
 """
@@ -28,43 +33,37 @@ loadBlpDataFromFile = compose(
 
 
 
-# def enrichGenevaPositions(blpDataFile, positions):
-# 	"""
-# 	[String] blpDataFile, [Iterator] positions
-# 		=> [Iterator] enriched positions
-# 	"""
+def writeIdnTypeToFile(file, positions):
+	"""
+	[String] output file, [Iterator] positions
+		=> [Int] 0 if successful
 
-# 	needsBlpDataEnrichment = lambda position: True
-
-# 	"""
-# 		[Iterator] positions => ( [List] positions no need to enrich
-# 								, [List] positions that need to enrch)
-# 	"""
-# 	splitPositions = lambda positions: \
-# 		reduce( lambda acc, el: \
-# 					(acc[0] + [el], acc[1]) \
-# 					if needsBlpDataEnrichment(el) else \
-# 					(acc[0], acc[1] + [el])
-# 			  , positions
-# 			  , ([], [])
-# 			  )
+	Side effect: write a csv file containing the id, idType for the positions
+	"""
+	noNeedId = lambda position: \
+		any(juxt(isPrivateSecurity, isCash, isMoneyMarket, isRepo, isFxForward)(position))
 
 
-# 	"""
-# 		[Dictionary] blpData (investid, investidType) -> [Dictionary] blp info)
-# 		[Dictionary] geneva position
-# 			=> [Dictionary] enriched position with data fields from Bloomberg
-# 	"""
-# 	addBlpData = lambda blpData, position : \
-# 		mergeDict(position, blpData[(position['Id'], position['IdType'])])
+	compose(
+		lambda idnTypes: writeCsv(file, chain([('ID', 'ID_TYPE')], idnTypes))
+	  , set
+	  , partial(map, getIdnType)
+	  , partial(filterfalse, noNeedId)
+	)(positions)
+
+	return 0
 
 
-# 	return compose(
-# 		lambda t: chain( map(partial(addBlpData, t[0]), t[1])
-# 					   , t[2])
-# 	  , lambda blpDataFile, positions: (getBlpDataFromFile(blpDataFile), *splitPositions(positions))
-# 	)(blpDataFile, positions)
 
+def createGenevaIdnTypeFile(inputFile):
+	"""
+	[String] inputFile (geneva investment positions report, Excel Format) 
+		=> [Int] 0 if successful
+
+	Side Effect: create an output csv file
+	"""
+	date, positions = readGenevaInvestmentPositionFile(inputFile)
+	writeIdnTypeToFile('geneva_' + date + '_idntype.csv', positions)
 
 
 
@@ -84,6 +83,6 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	d = loadBlpDataFromFile('Enrichment Sample.xlsx')
-	print(d)
+	createGenevaIdnTypeFile(join( getCurrentDirectory(), 'samples'
+								, 'DIF_20200429_investment_position.xlsx'))
 
