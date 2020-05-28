@@ -6,7 +6,7 @@
 
 from risk_report.utility import getCurrentDirectory
 from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
-							, isRepo, isFxForward, getIdnType
+							, isRepo, isFxForward, getIdnType, getAssetType
 from risk_report.geneva import readGenevaInvestmentPositionFile
 from clamc_datafeed.feeder import getRawPositions, fileToLines
 from utils.utility import writeCsv
@@ -83,6 +83,12 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	createGenevaIdnTypeFile(join( getCurrentDirectory(), 'samples'
-								, 'DIF_20200429_investment_position.xlsx'))
+	inputFile = join( getCurrentDirectory(), 'samples'
+					, 'DIF_20200429_investment_position.xlsx')
+	# createGenevaIdnTypeFile(inputFile)
 
+	date, positions = readGenevaInvestmentPositionFile(inputFile)
+	blpData = loadBlpDataFromFile('DIF_20200429_BlpData.xlsx')
+	writeCsv( 'geneva_assetType_' + date + '.csv'
+			, map(partial(getAssetType, blpData), positions) 
+			)

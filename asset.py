@@ -87,8 +87,6 @@ def getAssetType(blpData, position):
 	"""
 	logger.debug('getAssetType(): {0}'.format(getIdnType(position)))
 
-
-
 	getFundType = lambda position: \
 		getGenevaFundType(position) if isGenevaPosition(position) else \
 		getBlpFundType(position)
@@ -108,7 +106,6 @@ def getAssetType(blpData, position):
 	('Cash', ) if isCash(position) else \
 	('Foreign Exchange Derivatives', ) if isFxForward(position) else \
 	('Fixed Income', 'Cash Equivalents') if isMoneyMarket(position) else \
-	getCommodityAssetType(position) if isCommodity(position) else \
 	getRepoAssetType(position) if isRepo(position) else \
 	getFundType(position) if isFund(position) else \
 	getOtherAssetType(blpData, position)
@@ -116,7 +113,7 @@ def getAssetType(blpData, position):
 
 
 
-def getOtherAssetType(position):
+def getOtherAssetType(blpData, position):
 	"""
 	For Fixed Income or Equity asset type, use Bloomberg "MARKET_SECTOR_DES" 
 	field to lookup:
