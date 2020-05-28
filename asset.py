@@ -17,7 +17,8 @@ def positionsByCountry(blpData, country, positions):
 		=> [Iterabor] positions (from that country)
 	"""
 	countryNotApplicable = lambda p: \
-		True if getAssetType(blpData, p)[0] == 'Cash' else False
+		True if getAssetType(blpData, p)[0].lower() in \
+			['cash', 'foreign exchange derivatives'] else False
 
 
 	def assignCountryToPosition(blpData, p):
@@ -47,38 +48,176 @@ def getAssetType(blpData, position):
 	If it's cash on hand, payables and receivables, money market instrucments 
 	(say fixed deposit), asset class = "Cash Equivalents"
 
-	If it's not cash, then use LQA "MARKET_SECTOR_DES" field to lookup:
 
-	If LQA market sector = "Equity", then asset class = "Equity", sub category
+	"""
+	logger.debug('getAssetType(): {0}'.format(getIdnType(position)))
+
+	isPrivateSecurity = lambda position: \
+		False if isGenevaPosition(position) else position['Name'].startswith('.') 
+
+
+	isCash = lambda position: \
+		position['SortKey'] == 'Cash and Equivalents' if isGenevaPosition(position) \
+		else position['Asset Type'] == 'Cash'
+
+
+	isMoneyMarket = lambda position: \
+		position['SortKey'] == 'Fixed Deposit' if isGenevaPosition(position) \
+		else position['Asset Type'] == 'Money Market'
+
+
+	isRepo = lambda position: \
+		False if isGenevaPosition(position) \
+		else position['Asset Type'] == 'Repo Liability'
+
+
+	isFxForward = lambda position: \
+		position['SortKey'] == 'FX Forward' if isGenevaPosition(position) \
+		else position['Asset Type'] == 'Foreign Exchange Forward'
+
+
+	isFund = lambda position: \
+		position['SortKey'] in ['Open-End Fund', 'Exchange Trade Fund', 'Real Estate Investment Trust'] \
+		if isGenevaPosition(position) else position['Industry Sector'] == 'Funds'
+
+
+	getFundType = lambda position: \
+		getGenevaFundType(position) if isGenevaPosition(position) else \
+		getBlpFundType(position)
+
+
+	# NOTE: Geneva does not book repo yet
+	isRepo = lambda position: \
+		False if isGenevaPosition(position) else position['Asset Type'].startswith('Repo')
+
+	# FIXME: add implementation
+	getRepoAssetType = lambda position: \
+		lognRaise('getRepoAssetType(): not supported')
+
+	
+	return \
+	getPrivateSecurityAssetType(position) if isPrivateSecurity(position) else \
+	('Cash', ) if isCash(position) else \
+	('Foreign Exchange Derivatives', ) if isFxForward(position) else \
+	('Fixed Income', 'Cash Equivalents') if isMoneyMarket(position) else \
+	getCommodityAssetType(position) if isCommodity(position) else \
+	getRepoAssetType(position) if isRepo(position) else \
+	getFundType(position) if isFund(position) else \
+	getOtherAssetType(blpData, position)
+# End of getAssetType()
+
+
+
+def getOtherAssetType(position):
+	"""
+	For Fixed Income or Equity asset type, use Bloomberg "MARKET_SECTOR_DES" 
+	field to lookup:
+
+	If the field is "Equity", then asset class = "Equity", sub category
 	"Listed Equity" if Bloomberg field "EXCH_MARKET_STATUS" = "ACTV", else
 	sub category "Unlisted Equity".
 
-	If it's not equity and its Bloomberg field "CAPITAL_CONTINGENT_SECURITY" 
-	= "Y", then asset class is "Additional Tier 1, Contingent Convertibles 
-	and similar instrucments"
+	If the field is "Comdty", then asset type = ('Commodity', 'Derivatives')
+
+	Otherwise its Bloomberg field "CAPITAL_CONTINGENT_SECURITY" 
+	= "Y", then asset class is:
+
+	('Fixed Income', 'Additional Tier 1, Contingent Convertibles')
 
 	Else use the below mapping
 
 	Corp -> Fixed Income, sub catetory "Corporate Bond"
 	Govt -> Fixed Income, sub catetory "Government Bond"
-	Comdty -> Derivatives, sub category "Derivatives"
 	"""
-	isGenevaCash = lambda position: \
-		position['SortKey'] == 'Cash and Equivalents'
+	isEquityType = lambda blpData, position: \
+		blpData[getIdnType(position)[0]]['MARKET_SECTOR_DES'] == 'Equity'
 
 
-	isBlpCash = lambda position: \
-		position['Asset Type'] == 'Cash'
+	isCommodityType = lambda blpData, position: \
+		blpData[getIdnType(position)[0]]['MARKET_SECTOR_DES'] == 'Comdty'
 
 
-	isCash = lambda position: \
-		isGenevaCash(position) if isGenevaPosition(position) else \
-		isBlpCash(position)
+	isFIType = lambda blpData, position: \
+		blpData[getIdnType(position)[0]]['MARKET_SECTOR_DES'] in ['Corp', 'Govt']
 
 
-	isMoneyMarket = 
-	
-	return ()
+	isCapitalContingentSecurity = lambda blpData, position: \
+		blpData[getIdnType(position)[0]]['CAPITAL_CONTINGENT_SECURITY'] == 'Y'
+
+
+	# FIXME: this function is not complete, as index futures are not included
+	getEquityAssetType = lambda blpData, position: \
+		('Equity', 'Listed Equities') if blpData[getIdnType(position)[0]]['EXCH_MARKET_STATUS'] == 'ACTV' \
+		else ('Equity', 'Unlisted Equities')
+
+
+	# FIXME: this function is not complete, as physical commodity is not included
+	getCommodityAssetType = lambda blpData, position: \
+		('Commodity', 'Derivatives')
+
+
+	getFIAssetType = lambda blpData, position: \
+		('Fixed Income', 'Additional Tier 1, Contingent Convertibles') \
+		if isCapitalContingentSecurity(blpData, position) else \
+		('Fixed Income', 'Corporate') if blpData[getIdnType(position)[0]]['MARKET_SECTOR_DES'] == 'Corp' else \
+		('Fixed Income', 'Government') if blpData[getIdnType(position)[0]]['MARKET_SECTOR_DES'] == 'Govt' else \
+		lognRaise('getFIAssetType(): unsupported FI type {0}'.format(getIdnType(position)))
+
+
+	return \
+	getEquityAssetType(blpData, position) if isEquityType(blpData, position) else \
+	getCommodityAssetType(blpData, position) if isCommodityType(blpData, position) else \
+	getFIAssetType(blpData, position) if isFIType(blpData, position) else \
+	lognRaise('getOtherAssetType(): invalid asset type: {0}'.format(getIdnType(position)))
+
+
+
+def getBlpFundType(position):
+	"""
+	[Dictionary] position => [Tuple] Asset Class
+
+	If position is a fund type in Bloomberg, output its exact fund type
+	"""
+	# FIXME: Add implementation
+	lognRaise('getBlpFundType(): {0}'.format(getIdnType(position)))
+
+
+
+def getGenevaFundType(position):
+	"""
+	[Dictionary] position => [Tuple] Asset Class
+
+	If position is a fund type in Geneva, output its exact fund type
+	"""
+	def getGenevaOpenFundType(position):
+		# FIXME: Add mapping for open end fund here, what's the fund type
+		# for DIF?
+		# fMap = {'CLFLDIF HK': ('Fund', 'Other Funds')}
+		fMap = {}
+		try:
+			return fMap[position['InvestID']]
+		except KeyError:
+			lognRaise('getGenevaOpenFundType(): invalid position: {0}'.format(getIdnType(position)))
+
+
+	return \
+	('Fund', 'Exchange Traded Funds') if position['SortKey'] == 'Exchange Trade Fund' else \
+	('Fund', 'Real Estate Investment Trusts') if position['SortKey'] == 'Real Estate Investment Trust' else \
+	getGenevaOpenFundType(position) if position['SortKey'] == 'Open-End Fund' else \
+	lognRaise('getGenevaFundType(): invalid position: {0}'.format(getIdnType(position)))
+
+
+
+def getPrivateSecurityAssetType(position):
+	"""
+	[Dictionary] position => [Tuple] Asset Type
+
+	Handle special cases
+
+	# FIXME: add implementation
+	"""
+	logger.debug('getPrivateSecurityAssetType()')
+	raise ValueError
 
 
 
@@ -86,33 +225,38 @@ isGenevaPosition = lambda p: p['Remarks1'].lower().startswith('geneva')
 
 
 
-def getIdnType(position):
-	"""
+"""
 	[Dictionary] position (a Geneva or Blp position)
 		=> [Tuple] (id, idType)
-	"""
-	if isGenevaPosition(position):
-		return getGenevaIdnType(position)
-	else:
-		return getBlpIdnType(position)
+"""
+getIdnType = lambda position: \
+	getGenevaIdnType(position) if isGenevaPosition(position) else \
+	getBlpIdnType(position)
 
 
 
-def country(blpData, position):
+def getCountry(blpData, position):
 	"""
 	[Dictionary] blpInfo => [String] country
 
 	1) For equity asset class, use "CNTRY_ISSUE_ISO" field value
-	2) For other asset class, use "CNTRY_OF_RISK" field value
+	2) For fixed income asset class, use "CNTRY_OF_RISK" field value
 
-	Note that country() does not apply to Cash.
+	# FIXME: For other asset classes, the logic is not determined yet,
+	therefore will throw an exception.
 	"""
-	# FIXME: need handling when blp does not contain data for this position
-	blpInfo = blpData[getIdnType(position)[0]]
+	logger.debug('getCountry(): {0}'.format(getIdnType(position)))
 
-	return \
-	blpInfo['CNTRY_ISSUE_ISO'] if blpInfo['MARKET_SECTOR_DES'] = 'Equity' else \
-	blpInfo['CNTRY_OF_RISK']
+	if getAssetType(position)[0] in ['Equity', 'Fixed Income']:
+		blpInfo = blpData[getIdnType(position)[0]]
+
+		return \
+		blpInfo['CNTRY_ISSUE_ISO'] if blpInfo['MARKET_SECTOR_DES'] = 'Equity' else \
+		blpInfo['CNTRY_OF_RISK']
+
+	else:
+		logger.error('getCountry(): unsupported asset type {0}'.format(getAssetType(position)))
+		raise ValueError
 
 
 
