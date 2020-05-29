@@ -77,13 +77,6 @@ def getAssetType(blpData, position):
 
 	The asset type is a tuple containing the category and sub category, like
 	('Cash', ), ('Fixed Income', 'Corporate') or ('Equity', 'Listed')
-
-	The logic is:
-
-	If it's cash on hand, payables and receivables, money market instrucments 
-	(say fixed deposit), asset class = "Cash Equivalents"
-
-
 	"""
 	logger.debug('getAssetType(): {0}'.format(getIdnType(position)))
 

@@ -35,15 +35,20 @@ loadBlpDataFromFile = compose(
 
 def writeIdnTypeToFile(file, positions):
 	"""
-	[String] output file, [Iterator] positions
-		=> [Int] 0 if successful
+	[String] output file name, [Iterator] positions
+		=> [String] output file name
 
 	Side effect: write a csv file containing the id, idType for the positions
+
+	A utility function, using which we can convert positions (Geneva or Bloomberg)
+	to a file containing two columns (id, idType). The file will used to load
+	Bloomberg information for asset type processing.
 	"""
 	noNeedId = lambda position: \
 		any(juxt(isPrivateSecurity, isCash, isMoneyMarket, isRepo, isFxForward)(position))
 
 
+	return \
 	compose(
 		lambda idnTypes: writeCsv(file, chain([('ID', 'ID_TYPE')], idnTypes))
 	  , set
@@ -51,19 +56,18 @@ def writeIdnTypeToFile(file, positions):
 	  , partial(filterfalse, noNeedId)
 	)(positions)
 
-	return 0
 
 
-
-def createGenevaIdnTypeFile(inputFile):
-	"""
+"""
 	[String] inputFile (geneva investment positions report, Excel Format) 
 		=> [Int] 0 if successful
 
 	Side Effect: create an output csv file
-	"""
-	date, positions = readGenevaInvestmentPositionFile(inputFile)
-	writeIdnTypeToFile('geneva_' + date + '_idntype.csv', positions)
+"""
+createGenevaIdnTypeFile = compose(
+	lambda t: writeIdnTypeToFile('geneva_' + t[0] + '_idntype.csv', t[1])
+  , readGenevaInvestmentPositionFile
+)
 
 
 
