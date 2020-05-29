@@ -3,9 +3,11 @@
 # Asset allocation logic for SFC
 # 
 from risk_report.lqa import getBlpIdnType, getGenevaIdnType
+from clamc_datafeed.feeder import getRawPositions, fileToLines
+from utils.iter import pop
 from toolz.functoolz import compose
-from functools import partial
-from itertools import filterfalse
+from functools import partial, lru_cache
+from itertools import filterfalse, takewhile
 import logging
 logger = logging.getLogger(__name__)
 
@@ -255,6 +257,94 @@ def getCountry(blpData, position):
 	else:
 		logger.error('getCountry(): unsupported asset type {0}'.format(getAssetType(position)))
 		raise ValueError
+
+
+
+def getAverageRatingScoreSpecialCase(position):
+	"""
+	[Dictionary] position => [Float] score
+
+	When none of the rating agencies gives a credit rating, we provide the 
+	ratings here.
+
+	The current implementation gives a rating score of 0 in such case.
+	"""
+	logger.warning('getAverageRatingScoreSpecialCase(): {0}'.format(getIdnType(position)))
+	return 0
+
+
+
+def getAverageRatingScore(blpData, position, specialCaseHandler=getAverageRatingScoreSpecialCase):
+	"""
+	[Dictionary] blpData, [Dictionary] position
+		=> [Float] score
+	"""
+	logger.debug('getAverageRatingScore(): {0}'.format(getIdnType(position)))
+
+	averageScore = lambda position, scores: \
+		specialCaseHandler(position) if len(scores) == 0 else \
+		scores[0] if len(scores) == 1 else \
+		min(scores) if len(scores) == 2 else \
+		sorted(scores)[1]
+
+
+	return \
+	compose(
+		partial(averageScore, position)
+	  , lambda scores: list(filterfalse(lambda x: x == 0, scores))
+	  , getRatingScores
+	)(blpData, position)
+
+
+
+"""
+	[Dictionary] blpData, [Dictionary] position
+		=> [Tuple] ( S&P Rating score
+				   , Moody's Rating score
+				   , Fitch Rating score
+				   )
+"""
+getRatingScores = lambda blpData, position: \
+	( getRatingScore('S&P', blpData[getIdnType(position)[0]]['RTG_SP'])
+	, getRatingScore('Moody\'s', blpData[getIdnType(position)[0]]['RTG_MOODY'])
+	, getRatingScore('Fitch', blpData[getIdnType(position)[0]]['RTG_FITCH'])
+	)
+
+
+
+"""
+	[String] agency, [String] rating => [Float] rating score
+"""
+getRatingScore = lambda agency, rating: \
+	0 if rating.startswith('#N/A') else \
+	loadRatingScoreMappingFromFile('RatingScore.xlsx')[(agency, rating)]
+
+
+
+@lru_cache(maxsize=3)
+def loadRatingScoreMappingFromFile(file):
+	"""
+	[String] rating score mapping file 
+		=> [Dictionary] (agency, rating string) -> rating score
+	"""
+	return \
+	compose(
+		dict
+	  , partial(map, lambda line: ((line[0], line[1]), line[2]))
+	  , partial(takewhile, lambda line: len(line) > 2 and line[0] != '')
+	  , lambda t: t[1]
+	  , lambda lines: (pop(lines), lines)
+	  , fileToLines
+	)(file)
+
+
+
+"""
+	[Dictionary] blpData, [Dictionary] position
+			=> [Bool] is investment grade position
+"""
+isInvestmentGrade = lambda blpData, position: \
+	False if getAverageRatingScore(blpData, position) < 12 else True
 
 
 

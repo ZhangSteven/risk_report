@@ -14,7 +14,9 @@ Purpose of this application:
 1. Add test case for consolicated positions after merging BLP and Geneva positions.
 
 
-## Considerations
+## Note
+
+1. When a bond has no credit ratings, i.e., none of the 3 credit agencies gives a rating, then its rating score is set to 0. At least this is the logic on DIF 2020-04-29 report.
 
 1. When running DIF end of month reports, back office team uses the last business day as the official reporting date, e.g., 29th for end of 2020 April. However, when a portfolio contains securities from other markets, say US equities, we may need to combine those prices on 30th Apr because 30th is not a US holiday. This is a consideration to be put here.
 

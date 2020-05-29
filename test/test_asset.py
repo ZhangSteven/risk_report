@@ -3,9 +3,12 @@
 
 import unittest2
 from risk_report.utility import getCurrentDirectory
-from risk_report.asset import getAssetType
+from risk_report.asset import getAssetType, getAverageRatingScore, isInvestmentGrade \
+							, getIdnType
 from risk_report.geneva import readGenevaInvestmentPositionFile
-from risk_report.main import loadBlpDataFromFile
+from risk_report.main import loadBlpDataFromFile, ratingsApplicable
+from itertools import filterfalse
+from functools import partial
 from utils.iter import firstOf
 from toolz.functoolz import compose
 from os.path import join
@@ -64,3 +67,43 @@ class TestAsset(unittest2.TestCase):
 		isREITFund = lambda x: x['InvestID'] == '823 HK'
 		self.assertEqual( ('Fund', 'Real Estate Investment Trusts')
 						, getAssetType(blpData, firstOf(isREITFund, positions)))
+
+
+
+	def testAverageRating(self):
+		inputFile = join(getCurrentDirectory(), 'samples', 'DIF_20200429_investment_position.xlsx')
+		date, positions = compose(\
+			lambda t: (t[0], list(t[1]))
+		  , readGenevaInvestmentPositionFile
+		)(inputFile)
+
+		blpDataFile = join(getCurrentDirectory(), 'samples', 'DIF_20200429_BlpData.xlsx')
+		blpData = loadBlpDataFromFile(blpDataFile)
+
+		securitiesWithRatings = compose(
+			list
+		  , partial(map, lambda p: (getAverageRatingScore(blpData, p), p))
+		  , partial(map, lambda t: t[1])
+		  , partial(filter, lambda t: ratingsApplicable(t[0]))
+		  , lambda blpData, positions: \
+		  		map(lambda p: (getAssetType(blpData, p), p), positions)
+		)(blpData, positions)
+
+		# There are 155 bonds
+		self.assertEqual(155, len(securitiesWithRatings))
+
+		# Has 3 credit ratings
+		self.assertEqual(11, firstOf( lambda t: t[1]['InvestID'] == 'XS2114413565'
+									, securitiesWithRatings)[0])
+
+		# Has 2 credit ratings
+		self.assertEqual(11, firstOf( lambda t: t[1]['InvestID'] == 'USY70902AB04'
+									, securitiesWithRatings)[0])
+
+		# Has 1 credit ratings
+		self.assertEqual(13, firstOf( lambda t: t[1]['InvestID'] == 'XS2127809528'
+									, securitiesWithRatings)[0])
+
+		# Has no credit ratings
+		self.assertEqual(0, firstOf( lambda t: t[1]['InvestID'] == 'XS2021226985'
+									, securitiesWithRatings)[0])
