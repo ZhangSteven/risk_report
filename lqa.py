@@ -14,7 +14,7 @@ from functools import partial, reduce
 from itertools import chain, filterfalse, dropwhile, takewhile
 from toolz.functoolz import compose
 from toolz.itertoolz import groupby as groupbyToolz
-from utils.utility import mergeDict
+from utils.utility import mergeDict, writeCsv
 from os.path import join
 import logging
 logger = logging.getLogger(__name__)
@@ -78,12 +78,15 @@ def argumentsAsTuple(func):
 
 
 
-def buildLqaRequestFromFiles(blpFile, genevaFile):
+def buildLqaRequestFromFiles(blpFile, genevaFile, writer):
 	"""
-	[String] blpFile, [String] genevaFile
+	[String] blpFile, [String] genevaFile, [Function] writer
 		=> ( [String] master list CLO csv file
 		   , [STring] master list non-CLO csv file
 		   )
+
+	Where "writer" is an output function that takes name, date and positions
+	and write to an output file.
 
 	Side effect: create 2 LQA request files
 	"""
@@ -109,11 +112,11 @@ def buildLqaRequestFromFiles(blpFile, genevaFile):
 
 
 	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
-		( buildLqaRequest( 'masterlist_nonCLO'
-						 , dt
-						 , consolidate(chain(nonCLO, genevaPositions))
-						 )
-		, buildLqaRequest('masterlist_CLO', dt, consolidate(clo))
+		( writer( 'masterlist_nonCLO'
+				, dt
+				, consolidate(chain(nonCLO, genevaPositions))
+				)
+		, writer('masterlist_CLO', dt, consolidate(clo))
 		)
 
 
@@ -309,6 +312,9 @@ def buildLqaRequest(name, date, positions):
 		=> [String] output lqa request file name
 
 	Side effect: create a lqa request file
+
+	This version builds a txt file that is ready to be submitted as a universe
+	file to the Bloomberg service center.
 	"""
 	lqaLine = lambda name, date, position: \
 		', '.join([ position['Id']
@@ -332,6 +338,52 @@ def buildLqaRequest(name, date, positions):
 
 
 	return lqaFile
+
+
+
+def buildLqaRequestOldStyle(name, date, positions):
+	"""
+	[String] name (name of the lqa request, 'masterlist_clo' etc.)
+	[String] date (yyyy-mm-dd)
+	[Iterable] positions 
+		=> [String] output lqa request file name
+
+	Side effect: create a lqa request file
+
+	This version builds a csv file that is for human inspection.
+	"""
+	headers = [ 'Id'
+			  , 'IdType'
+			  , 'LQA_POSITION_TAG_1'
+			  , 'LQA_TGT_LIQUIDATION_VOLUME'
+			  , 'LQA_SOURCE_TGT_LIQUIDATION_COST'
+			  , 'LQA_FACTOR_TGT_LIQUIDATION_COST'
+			  , 'LQA_TGT_LIQUIDATION_HORIZON'
+			  , 'LQA_TGT_COST_CONF_LEVL'
+			  , 'LQA_MODEL_AS_OF_DATE'
+			  ]
+
+
+	lqaPosition = lambda name, date, position: \
+		{ 'Id': position['Id']
+		, 'IdType': position['IdType']
+		, 'LQA_POSITION_TAG_1': name
+		, 'LQA_TGT_LIQUIDATION_VOLUME': position['Position']
+		, 'LQA_SOURCE_TGT_LIQUIDATION_COST': 'PR' if position['IdType'] == 'TICKER' else 'BA'
+		, 'LQA_FACTOR_TGT_LIQUIDATION_COST': '20' if position['IdType'] == 'TICKER' else '1'
+		, 'LQA_TGT_LIQUIDATION_HORIZON': '1'
+		, 'LQA_TGT_COST_CONF_LEVL': '95'
+		, 'LQA_MODEL_AS_OF_DATE': date
+		}
+
+
+	lqaFile = 'LQA_request_'+ name + '_' + date + '.csv'
+
+	return writeCsv( lqaFile
+				   , chain( [headers]
+				   		  , map( lambda p: [p[key] for key in headers]
+				   		  	   , map( partial(lqaPosition, name, date)
+				   		  	   		, positions))))
 
 
 
@@ -386,8 +438,9 @@ if __name__ == '__main__':
 	parser.add_argument( 'blp_file', metavar='blp_file', type=str
 					   , help='Bloomberg holding file')
 	parser.add_argument( 'geneva_file', metavar='geneva_file', type=str
-				   , help='Geneva investment positions report')
+				   	   , help='Geneva investment positions report')
 	args = parser.parse_args()
 
-	buildLqaRequestFromFiles(args.blp_file, args.geneva_file)
+	# buildLqaRequestFromFiles(args.blp_file, args.geneva_file, buildLqaRequestOldStyle)
 
+	buildLqaRequestFromFiles(args.blp_file, args.geneva_file, buildLqaRequest)

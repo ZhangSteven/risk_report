@@ -87,12 +87,20 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	inputFile = join( getCurrentDirectory(), 'samples'
-					, 'DIF_20200429_investment_position.xlsx')
-	# createGenevaIdnTypeFile(inputFile)
+	inputFile = join( getCurrentDirectory()
+					, 'samples'
+					, 'DIF_20200429_investment_position.xlsx'
+					)
 
-	date, positions = readGenevaInvestmentPositionFile(inputFile)
-	blpData = loadBlpDataFromFile('DIF_20200429_BlpData.xlsx')
-	writeCsv( 'geneva_assetType_' + date + '.csv'
-			, map(partial(getAssetType, blpData), positions) 
-			)
+	# Step 1. Create a file containing the (id, idtype) columns.
+	createGenevaIdnTypeFile(inputFile)
+
+	# Step 2. Use the BlpData_Template.xlsx to load Bloomberg data and save
+	# the result to a new file (values only).
+
+	# Step 3. Check if all asset types can be determined.
+	# date, positions = readGenevaInvestmentPositionFile(inputFile)
+	# blpData = loadBlpDataFromFile('DIF_20200429_BlpData.xlsx')
+	# writeCsv( 'geneva_assetType_' + date + '.csv'
+	# 		, map(partial(getAssetType, blpData), positions) 
+	# 		)
