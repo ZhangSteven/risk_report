@@ -212,10 +212,9 @@ def getPrivateSecurityAssetType(position):
 	"""
 	[Dictionary] position => [Tuple] Asset Type
 
-	Handle special cases
-
-	# FIXME: add implementation
+	Handle special cases for private securities
 	"""
+	# FIXME: add implementation
 	logger.debug('getPrivateSecurityAssetType()')
 	raise ValueError
 
@@ -348,19 +347,12 @@ isInvestmentGrade = lambda blpData, position: \
 
 
 
-def isFinancial(investment):
-	"""
-	The logic:
-
-	1) If asset class is cash equivalent, then throw exception because it does
-		not make sense.
-	2) Otherwise use Bloomberg "INDUSTRY_SECTOR", if return result is "Financial",
-		then YES, othereise NO.
-
-	What about derivatives? Cannot see the logic in Excel
-	"""
-	return 0
-
+"""
+	[Dictionary] blpData, [Dictionary] position
+			=> [Bool] is investment financial industry
+"""
+isFinancial = lambda blpData, position: \
+	True if blpData[getIdnType(position)[0]]['INDUSTRY_SECTOR'] == 'Financial' else False
 
 
 
@@ -369,26 +361,6 @@ def lognContinue(msg, x):
 	return x
 
 
-
 def lognRaise(msg):
 	logger.error(msg)
 	raise ValueError
-
-
-
-
-if __name__ == '__main__':
-	import logging.config
-	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
-
-	import argparse
-	parser = argparse.ArgumentParser(description='Process Bloomberg and Geneva holding File ' \
-										+ 'and Geneva holding file (DIF only), then produce '
-										+ 'LQA request files.')
-	parser.add_argument( 'blp_file', metavar='blp_file', type=str
-					   , help='Bloomberg holding file')
-	parser.add_argument( 'geneva_file', metavar='geneva_file', type=str
-				   , help='Geneva holding file')
-	args = parser.parse_args()
-
-	buildLqaRequestFromFiles(args.blp_file, args.geneva_file)
