@@ -7,7 +7,7 @@
 from risk_report.utility import getCurrentDirectory
 from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
-							, getAverageRatingScore, getCountryCode
+							, getAverageRatingScore, getCountryCode, byCountryGroup
 from risk_report.geneva import readGenevaInvestmentPositionFile
 from clamc_datafeed.feeder import getRawPositions, fileToLines
 from utils.utility import writeCsv
@@ -112,6 +112,21 @@ def getFISecuritiesWoRatings(blpData, positions):
 """
 countryNotApplicable = lambda blpData, position: \
 	getAssetType(blpData, position)[0] in ['Cash', 'Foreign Exchange Derivatives']
+
+
+
+"""
+	[Dictionary] blpData, [String] countryGroup 
+		=> [Function] f ([Iterator] positions -> [Iterator] positions)
+
+	Taking the blpData and countryGroup, return a filter function that filters
+	out positions from the particular country group.
+"""
+byCountryFilter = lambda blpData, countryGroup: \
+	compose(
+		lambda positions: byCountryGroup(blpData, countryGroup, positions)
+	  , partial(filterfalse, partial(countryNotApplicable, blpData))
+	)
 
 
 

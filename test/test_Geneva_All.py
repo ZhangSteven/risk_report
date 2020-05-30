@@ -4,7 +4,7 @@
 import unittest2
 from risk_report.asset import byCountryGroup, getAssetType
 from risk_report.geneva import readGenevaInvestmentPositionFile
-from risk_report.main import loadBlpDataFromFile, countryNotApplicable
+from risk_report.main import loadBlpDataFromFile, byCountryFilter
 from risk_report.utility import getCurrentDirectory
 from toolz.functoolz import compose
 from functools import partial
@@ -12,23 +12,6 @@ from itertools import filterfalse
 from os.path import join
 
 
-
-"""
-	[Dictionary] Blp Data
-	[String] country group
-	[Iterator] positions grom Geneva investment positions
-		=> [Float] sum of market value of positions from that country in the
-			portfolio's local currency
-"""
-getGenevaTotalCountryGroup = compose(
-	sum
-  , partial(map, lambda p: p['AccruedInterest'] + p['MarketValueBook'])
-  , lambda blpData, countryGroup, positions: \
-  		byCountryGroup( blpData
-  					  , countryGroup
-  					  , filterfalse(partial(countryNotApplicable, blpData), positions)
-  					  )
-)
 
 
 
@@ -39,7 +22,7 @@ class TestGenevaAll(unittest2.TestCase):
 
 
 
-	def testbyCountryGroup(self):
+	def testSum(self):
 		inputFile = join( getCurrentDirectory()
 						, 'samples'
 						, 'DIF_20200429_investment_position.xlsx'
@@ -58,27 +41,61 @@ class TestGenevaAll(unittest2.TestCase):
 		)(inputFile)
 
 
+		getGenevaMarketValue = lambda position: \
+			position['AccruedInterest'] + position['MarketValueBook']
+
+
+		# Now we test by different country groups
 		self.assertAlmostEqual( 394165723.69
-							  , getGenevaTotalCountryGroup(blpData, 'China', positions) * FX
+							  , compose(
+							  		lambda x: x * FX
+							  	  , sum
+							  	  , partial(map, getGenevaMarketValue)
+							  	  , byCountryFilter(blpData, 'China')
+							  	)(positions)
 							  , 2
 							  )
+
 
 		self.assertAlmostEqual( 46753980.08
-							  , getGenevaTotalCountryGroup(blpData, 'Hong Kong', positions) * FX
+							  , compose(
+							  		lambda x: x * FX
+							  	  , sum
+							  	  , partial(map, getGenevaMarketValue)
+							  	  , byCountryFilter(blpData, 'Hong Kong')
+							  	)(positions)
 							  , 2
 							  )
+
 
 		self.assertAlmostEqual( 10019205.48
-							  , getGenevaTotalCountryGroup(blpData, 'Macau', positions) * FX
+							  , compose(
+							  		lambda x: x * FX
+							  	  , sum
+							  	  , partial(map, getGenevaMarketValue)
+							  	  , byCountryFilter(blpData, 'Macau')
+							  	)(positions)
 							  , 2
 							  )
+
 
 		self.assertAlmostEqual( 15742145.41
-							  , getGenevaTotalCountryGroup(blpData, 'Singapore', positions) * FX
+							  , compose(
+							  		lambda x: x * FX
+							  	  , sum
+							  	  , partial(map, getGenevaMarketValue)
+							  	  , byCountryFilter(blpData, 'Singapore')
+							  	)(positions)
 							  , 2
 							  )
 
+
 		self.assertAlmostEqual( 1419901.34
-							  , getGenevaTotalCountryGroup(blpData, 'America - others (1)', positions) * FX
+							  , compose(
+							  		lambda x: x * FX
+							  	  , sum
+							  	  , partial(map, getGenevaMarketValue)
+							  	  , byCountryFilter(blpData, 'America - others (1)')
+							  	)(positions)
 							  , 2
 							  )
