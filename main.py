@@ -106,30 +106,6 @@ def getFISecuritiesWoRatings(blpData, positions):
 
 
 
-"""
-	[Dictionary] blpData, [Dictionary] position 
-		=> [Bool] does country apply to this position
-"""
-countryNotApplicable = lambda blpData, position: \
-	getAssetType(blpData, position)[0] in ['Cash', 'Foreign Exchange Derivatives']
-
-
-
-"""
-	[Dictionary] blpData, [String] countryGroup 
-		=> [Function] f ([Iterator] positions -> [Iterator] positions)
-
-	Taking the blpData and countryGroup, return a filter function that filters
-	out positions from the particular country group.
-"""
-byCountryFilter = lambda blpData, countryGroup: \
-	compose(
-		lambda positions: byCountryGroup(blpData, countryGroup, positions)
-	  , partial(filterfalse, partial(countryNotApplicable, blpData))
-	)
-
-
-
 def lognContinue(msg, x):
 	logger.debug(msg)
 	return x
@@ -180,18 +156,18 @@ if __name__ == '__main__':
 	those with some ratings but all equal to zero, will be saved to a csv file. 
 	Ask risk team to see if they want to give any manual credit scores to those. 
 	"""
-	compose(
-		print
-	  , lambda t: 'All FI securities have at least one credit rating' if len(t[1]) == 0 else \
-	  			  writeCsv( 'MissingCreditRating_' + t[0] + '.csv'
-						  , chain([('Id', 'IdType')], t[1])
-						  )
-	  , lambda t: (t[0], getFISecuritiesWoRatings(t[2], t[1]))
-	  , lambda inputFile, blpDataFile: \
-	  		( *readGenevaInvestmentPositionFile(inputFile)
-	  		, loadBlpDataFromFile(blpDataFile)
-	  		)	
-	)(inputFile, blpDataFile)
+	# compose(
+	# 	print
+	#   , lambda t: 'All FI securities have at least one credit rating' if len(t[1]) == 0 else \
+	#   			  writeCsv( 'MissingCreditRating_' + t[0] + '.csv'
+	# 					  , chain([('Id', 'IdType')], t[1])
+	# 					  )
+	#   , lambda t: (t[0], getFISecuritiesWoRatings(t[2], t[1]))
+	#   , lambda inputFile, blpDataFile: \
+	#   		( *readGenevaInvestmentPositionFile(inputFile)
+	#   		, loadBlpDataFromFile(blpDataFile)
+	#   		)	
+	# )(inputFile, blpDataFile)
 	
 
 
@@ -199,20 +175,26 @@ if __name__ == '__main__':
 	Step 5. Check if all securities except cash and FX forwards can get
 	country code.
 	"""
-	compose(
-		print
-	  , lambda t: writeCsv( 'countries_' + t[0] + '.csv'
-						  , chain([('Country Code', )], map(lambda s: [s], t[1]))
-						  )
-	  , lambda t: ( t[0]
-	  			  , map( partial(getCountryCode, t[2])
-	  			  	   , filterfalse(partial(countryNotApplicable, t[2]), t[1])
-	  			  	   )
-	  			  )
-	  , lambda inputFile, blpDataFile: \
-	  		( *readGenevaInvestmentPositionFile(inputFile)
-	  		, loadBlpDataFromFile(blpDataFile)
-	  		)	
-	)(inputFile, blpDataFile)
+	# compose(
+	# 	print
+	#   , lambda t: writeCsv( 'countries_' + t[0] + '.csv'
+	# 					  , chain([('Country Code', )], map(lambda s: [s], t[1]))
+	# 					  )
+	#   , lambda t: ( t[0]
+	#   			  , map( partial(getCountryCode, t[2])
+	#   			  	   , filterfalse(partial(countryNotApplicable, t[2]), t[1])
+	#   			  	   )
+	#   			  )
+	#   , lambda inputFile, blpDataFile: \
+	#   		( *readGenevaInvestmentPositionFile(inputFile)
+	#   		, loadBlpDataFromFile(blpDataFile)
+	#   		)	
+	# )(inputFile, blpDataFile)
 
 
+	def show2(x, *args):
+		print(len(args))
+		print(args)
+		print(args[1:])
+
+	show2(2)

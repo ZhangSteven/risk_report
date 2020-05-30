@@ -476,6 +476,98 @@ isFinancial = lambda blpData, position: \
 
 
 
+"""
+	[Dictionary] blpData, [Dictionary] position 
+		=> [Bool] does country apply to this position
+"""
+countryNotApplicable = lambda blpData, position: \
+	getAssetType(blpData, position)[0] in ['Cash', 'Foreign Exchange Derivatives']
+
+
+
+"""
+	[Dictionary] blpData, [String] countryGroup 
+		=> [Function] f ([Iterator] positions -> [Iterator] positions)
+
+	Taking the blpData and countryGroup, return a filter function that filters
+	out positions from the particular country group.
+"""
+byCountryFilter = lambda blpData, countryGroup: \
+	compose(
+		lambda positions: byCountryGroup(blpData, countryGroup, positions)
+	  , partial(filterfalse, partial(countryNotApplicable, blpData))
+	)
+
+
+
+byAssetTypeFilter = lambda blpData, *assetTypeStrings: \
+	byAssetTypeFilterTuple(blpData, tuple(assetTypeStrings))
+	
+
+
+def byAssetTypeFilterTuple(blpData, assetTypeStringTuple):
+	"""
+	[Dictionary] blpData, [Tuple] (tier1 type string, tier 2 type string, ...)
+		=> [Function] f ([Iterator] positions -> [Iterable] positions)
+
+	Returns a filter function that filters out positions with type specified by
+	the type strings in the tuple. For example, if the tuple is like:
+
+		('Fixed Income', 'Corporate', 'Investment Grade', 'Financial Institution')
+
+	Then we return a filter function that filters all positions that are 
+	listed equities and belong to Financial	industry sector.
+	"""
+	attributeFilter = \
+	{ 'investment grade': partial(filter, partial(isInvestmentGrade, blpData))
+	, 'non-investment grade': partial(filterfalse, partial(isInvestmentGrade, blpData))
+	, 'financial': partial(filter, partial(isFinancial, blpData))
+	, 'non-financial': partial(filterfalse, partial(isFinancial, blpData))
+	}
+
+
+	return \
+	partial(filter, lambda _: True) if len(assetTypeStringTuple) == 0 else \
+	compose( attributeFilter[assetTypeStringTuple[-1].lower()]
+		   , byAssetTypeFilterTuple(blpData, assetTypeStringTuple[0:-1])
+		   ) \
+	if assetTypeStringTuple[-1].lower() in attributeFilter else \
+	byAssetTypeOnlyFilterTuple(blpData, assetTypeStringTuple)
+
+
+
+def byAssetTypeOnlyFilterTuple(blpData, assetTypeStringTuple):
+	"""
+	[Dictionary] blpData, [Tuple] (tier1 type string, tier 2 type string, ...)
+		=> [Function] f ([Iterator] positions -> [Iterable] positions)
+
+	Returns a filter function that filters out positions with type specified by
+	the type strings in the tuple. For example, if the tuple is like:
+
+		('Equity', 'Listed Equities')
+
+	Then we return a filter function that takes positions with the asset type
+	string matching the above.
+
+	The difference between this function and byAssetTypeFilter() is that the
+	latter also 
+	"""
+	matched = lambda t: t[0].lower().startswith(t[1].lower())
+
+	compareStringTuple = lambda t1, t2: \
+		False if len(t1) > len(t2) else all(map(matched, zip(t1, t2)))
+
+
+	inner = lambda blpData, assetTypeStringTuple, position: \
+		compareStringTuple(assetTypeStringTuple, getAssetType(blpData, position))
+
+
+	return \
+	partial(filter, lambda _: True) if len(assetTypeStringTuple) == 0 else \
+	partial(filter, partial(inner, blpData, assetTypeStringTuple))
+
+
+
 def lognContinue(msg, x):
 	logger.debug(msg)
 	return x
