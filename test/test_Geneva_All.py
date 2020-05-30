@@ -62,3 +62,23 @@ class TestGenevaAll(unittest2.TestCase):
 							  , getGenevaTotalCountryGroup(blpData, 'China', positions) * FX
 							  , 2
 							  )
+
+		self.assertAlmostEqual( 46753980.08
+							  , getGenevaTotalCountryGroup(blpData, 'Hong Kong', positions) * FX
+							  , 2
+							  )
+
+		self.assertAlmostEqual( 10019205.48
+							  , getGenevaTotalCountryGroup(blpData, 'Macau', positions) * FX
+							  , 2
+							  )
+
+		self.assertAlmostEqual( 15742145.41
+							  , getGenevaTotalCountryGroup(blpData, 'Singapore', positions) * FX
+							  , 2
+							  )
+
+		self.assertAlmostEqual( 1419901.34
+							  , getGenevaTotalCountryGroup(blpData, 'America - others (1)', positions) * FX
+							  , 2
+							  )
