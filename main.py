@@ -7,7 +7,7 @@
 from risk_report.utility import getCurrentDirectory
 from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
-							, getAverageRatingScore
+							, getAverageRatingScore, getCountryCode
 from risk_report.geneva import readGenevaInvestmentPositionFile
 from clamc_datafeed.feeder import getRawPositions, fileToLines
 from utils.utility import writeCsv
@@ -87,19 +87,31 @@ def getFISecuritiesWoRatings(blpData, positions):
 		missing.extend([getIdnType(position)])
 		return 0
 
+	# [Dictionary] blpData, [Dictionary] position => [Bool] position needs rating
+	needsRating = compose(
+		ratingsApplicable
+	  , getAssetType
+	)
+
 
 	compose(
 		lambda L: list(map( lambda p: getAverageRatingScore(blpData, p, accumulate)
 						  , L))
-	  , partial(map, lambda t: t[1])
-	  , partial(filter, lambda t: ratingsApplicable(t[0]))
-	  , lambda blpData, positions: \
-	  		map(lambda p: (getAssetType(blpData, p), p), positions)
+	  , lambda blpData, positions: filter(partial(needsRating, blpData), positions)
 	)(blpData, positions)
 
 
 	return missing
 # End of getFISecuritiesWoRatings()
+
+
+
+"""
+	[Dictionary] blpData, [Dictionary] position 
+		=> [Bool] does country apply to this position
+"""
+countryNotApplicable = lambda blpData, position: \
+	getAssetType(blpData, position)[0] in ['Cash', 'Foreign Exchange Derivatives']
 
 
 
@@ -120,24 +132,23 @@ if __name__ == '__main__':
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
 	inputFile = join( getCurrentDirectory()
-					, 'samples'
-					, 'DIF_20200429_investment_position.xlsx'
+					, 'DIF_investment_positions_20190331.xlsx'
 					)
 
 	# Step 1. Create a file containing the (id, idtype) columns.
 	# createGenevaIdnTypeFile(inputFile)
 
 	# Step 2. Use the BlpData_Template.xlsx to load Bloomberg data and save
-	# the result to a new file (blpDataFile).
+	# the result to "blpDataFile".
 
 	# Step 3. Check if all asset types can be determined.
 	blpDataFile = join( getCurrentDirectory()
-					  , 'samples'
-					  , 'DIF_20200429_BlpData.xlsx'
+					  , 'BlpData_DIF_20190331.xlsx'
 					  )
 
 	# compose(
-	# 	lambda t: writeCsv( 'geneva_assetType_' + t[0] + '.csv'
+	# 	print
+	#   , lambda t: writeCsv( 'geneva_assetType_' + t[0] + '.csv'
 	# 					  , map(partial(getAssetType, t[2]), t[1]) 
 	# 					  )
 	#   , lambda inputFile, blpDataFile: \
@@ -147,12 +158,17 @@ if __name__ == '__main__':
 	# )(inputFile, blpDataFile)
 
 
-	# Step 4. Check if all Fixed Income securities get credit ratings.
-	# If there are missing ones, then it will be saved to a csv file.
+
+	"""
+	Step 4. Check if all Fixed Income securities get credit ratings.
+	Those bonds with no credit ratings from any one of the 3 angencies or
+	those with some ratings but all equal to zero, will be saved to a csv file. 
+	Ask risk team to see if they want to give any manual credit scores to those. 
+	"""
 	compose(
 		print
 	  , lambda t: 'All FI securities have at least one credit rating' if len(t[1]) == 0 else \
-	  			  writeCsv( 'MissingCreditRating_' + t[0] + '_.csv'
+	  			  writeCsv( 'MissingCreditRating_' + t[0] + '.csv'
 						  , chain([('Id', 'IdType')], t[1])
 						  )
 	  , lambda t: (t[0], getFISecuritiesWoRatings(t[2], t[1]))
@@ -161,3 +177,27 @@ if __name__ == '__main__':
 	  		, loadBlpDataFromFile(blpDataFile)
 	  		)	
 	)(inputFile, blpDataFile)
+	
+
+
+	"""
+	Step 5. Check if all securities except cash and FX forwards can get
+	country code.
+	"""
+	compose(
+		print
+	  , lambda t: writeCsv( 'countries_' + t[0] + '.csv'
+						  , chain([('Country Code', )], map(lambda s: [s], t[1]))
+						  )
+	  , lambda t: ( t[0]
+	  			  , map( partial(getCountryCode, t[2])
+	  			  	   , filterfalse(partial(countryNotApplicable, t[2]), t[1])
+	  			  	   )
+	  			  )
+	  , lambda inputFile, blpDataFile: \
+	  		( *readGenevaInvestmentPositionFile(inputFile)
+	  		, loadBlpDataFromFile(blpDataFile)
+	  		)	
+	)(inputFile, blpDataFile)
+
+

@@ -13,27 +13,36 @@ logger = logging.getLogger(__name__)
 
 
 
-def positionsByCountry(blpData, country, positions):
+"""
+	[Dictionary] blpData, [String] countryCode, [Iterator] positions
+		=> [Bool] is position's country Code matches the countryCode passed in
+"""
+# fromCountry = lambda blpData, countryCode, position: \
+# 	countryCode == getCountry(blpData, position)
+	
+
+
+def byCountryGroup(blpData, countryGroup, positions):
 	"""
-	[Dictionary] blpData, [String] country, [Iterator] positions
-		=> [Iterabor] positions (from that country)
+	[Dictionary] blpData, [String] countryGroup, [Iterator] positions
+		=> [Iterator] positions from that country group
 	"""
-	countryNotApplicable = lambda p: \
-		True if getAssetType(blpData, p)[0].lower() in \
-			['cash', 'foreign exchange derivatives'] else False
+	# [Dictionary] blpData, [Dictionary] position => [String] country code
+	toCountryGroup = compose(
+		lambda code: \
+			loadCountryGroupMappingFromFile('SFC_Country.xlsx')[code] \
+			if code in loadCountryGroupMappingFromFile('SFC_Country.xlsx') else \
+			lognRaise('toCountryGroup(): unsupported country code: {0}'.format(code))
+	  , getCountryCode
+	)
 
 
-	def assignCountryToPosition(blpData, p):
-		logger.debug('assignCountryToPosition(): {0}'.getIdnType(p))
-		return country(blpData, p)
+	matchCountryGroup = lambda blpData, countryGroup, position: \
+		toCountryGroup(blpData, position).lower() == countryGroup.lower()
 
 
-	return compose(
-		partial(map, lambda t: t[1])
-	  , partial(filter, lambda t: t[0] == country)
-	  , partial(map, partial(assignCountryToPosition, blpData))
-	  , partial(filterfalse, countryNotApplicable)
-	)(positions)
+	return filter(partial(matchCountryGroup, blpData, countryGroup), positions)
+# End of byCountryGroup
 
 
 
@@ -234,28 +243,122 @@ getIdnType = lambda position: \
 
 
 
-def getCountry(blpData, position):
+def getCountryCode(blpData, position):
 	"""
-	[Dictionary] blpInfo => [String] country
-
-	1) For equity asset class, use "CNTRY_ISSUE_ISO" field value
-	2) For fixed income asset class, use "CNTRY_OF_RISK" field value
-
-	# FIXME: For other asset classes, the logic is not determined yet,
-	therefore will throw an exception.
+	[Dictionary] blpInfo, [Dictionary] position => [String] country code
 	"""
-	logger.debug('getCountry(): {0}'.format(getIdnType(position)))
+	logger.debug('getCountryCode(): {0}'.format(getIdnType(position)))
 
-	if getAssetType(position)[0] in ['Equity', 'Fixed Income']:
-		blpInfo = blpData[getIdnType(position)[0]]
+	isCommodityType = lambda blpData, position: \
+		getAssetType(blpData, position)[0] == 'Commodity'
 
-		return \
-		blpInfo['CNTRY_ISSUE_ISO'] if blpInfo['MARKET_SECTOR_DES'] == 'Equity' else \
-		blpInfo['CNTRY_OF_RISK']
 
-	else:
-		logger.error('getCountry(): unsupported asset type {0}'.format(getAssetType(position)))
-		raise ValueError
+	isFundType = lambda blpData, position: \
+		getAssetType(blpData, position)[0] == 'Fund'
+
+
+	isEquityType = lambda blpData, position: \
+		getAssetType(blpData, position)[0] == 'Equity'
+
+
+	isFIType = lambda blpData, position: \
+		getAssetType(blpData, position)[0] == 'Fixed Income'
+
+
+	return \
+	getPrivateSecurityCountry(position) if isPrivateSecurity(position) else \
+	getRepoCountry(position) if isRepo(position) else \
+	getMoneyMarketCountry(position) if isMoneyMarket(position) else \
+	getCommodityCountry(blpData, position) if isCommodityType(blpData, position) else \
+	getFundCountry(blpData, position) if isFundType(blpData, position) else \
+	getEquityCountry(blpData, position) if isEquityType(blpData, position) else \
+	getFICountry(blpData, position) if isFIType(blpData, position) else \
+	lognRaise('getCountryCode(): unsupported asset type')
+
+
+
+def getEquityCountry(blpData, position):
+	"""
+	[Dictionary] blpData, [Dictionary] position => [String] country
+	"""
+	logger.debug('getEquityCountry()')
+	return blpData[getIdnType(position)[0]]['CNTRY_ISSUE_ISO']
+
+
+
+def getFICountry(blpData, position):
+	"""
+	[Dictionary] blpData, [Dictionary] position => [String] country
+	"""
+	logger.debug('getFICountry()')
+	return blpData[getIdnType(position)[0]]['CNTRY_OF_RISK']
+
+
+
+def getPrivateSecurityCountry(position):
+	"""
+	[Dictionary] position => [String] country
+
+	A private security is a non-listed security, non-listed fund or others
+	that cannot find their information through Bloomberg. So we deal with them
+	here.
+	"""
+	# FIXME: Add implementation
+	lognRaise('getPrivateSecurityCountry(): {0}'.format(getIdnType(position)))
+
+
+
+def getRepoCountry(position):
+	"""
+	[Dictionary] position => [String] country
+
+	A repo position is an OTC product, so we deal with them here.
+	"""
+	# FIXME: Add implementation
+	lognRaise('getRepoCountry(): {0}'.format(getIdnType(position)))
+
+
+
+def getMoneyMarketCountry(position):
+	"""
+	[Dictionary] position => [String] country
+
+	A money market product can be an OTC product, for example, a fixed deposit,
+	so we deal with them here.
+	"""
+	# FIXME: Add implementation
+	lognRaise('getMoneyMarketCountry(): {0}'.format(getIdnType(position)))
+
+
+
+def getCommodityCountry(blpData, position):
+	"""
+	[Dictionary] blpData, [Dictionary] position => [String] country
+
+	The logic to deal with commodity product is not yet clear, so we put it
+	here.
+	"""
+	# FIXME: Add implementation
+	lognRaise('getCommodityCountry(): {0}'.format(getIdnType(position)))
+
+
+
+def getFundCountry(blpData, position):
+	"""
+	[Dictionary] blpData, [Dictionary] position => [String] country
+
+	The logic to deal with fund, no matter listed fund (ETF) or open ended fund,
+	is not yet clear, so we put it here.
+	"""
+	# FIXME: Need a formal implementation, now just case by case
+	fundCountry = { '2823 HK Equity': 'HK'	# iShares FTSE A50 China ETF
+				  , '823 HK Equity': 'HK'	# LINK REITs
+				  }
+
+	try:
+		return fundCountry[getIdnType(position)[0]]
+	except KeyError:
+		lognRaise('getFundCountry(): {0}'.format(getIdnType(position)))
 
 
 
@@ -330,6 +433,23 @@ def loadRatingScoreMappingFromFile(file):
 	compose(
 		dict
 	  , partial(map, lambda line: ((line[0], line[1]), line[2]))
+	  , partial(takewhile, lambda line: len(line) > 2 and line[0] != '')
+	  , lambda t: t[1]
+	  , lambda lines: (pop(lines), lines)
+	  , fileToLines
+	)(file)
+
+
+
+@lru_cache(maxsize=3)
+def loadCountryGroupMappingFromFile(file):
+	"""
+	[String] file => [Dictionary] country code -> country group
+	"""
+	return \
+	compose(
+		dict
+	  , partial(map, lambda line: (line[0], line[2]))
 	  , partial(takewhile, lambda line: len(line) > 2 and line[0] != '')
 	  , lambda t: t[1]
 	  , lambda lines: (pop(lines), lines)

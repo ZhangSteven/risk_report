@@ -25,6 +25,7 @@ Purpose of this application:
 
 ## Know Issues
 
+1. Fitch rating: 'BBB \*-', Moody's rating 'B1u' and 'Caa1u' have no rating score. Steven Zhang adds some estimates to RatingScore.xlsx, needs to confirm with Daphne.
 
 
 ## Bloomberg Positions
