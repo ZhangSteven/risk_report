@@ -47,7 +47,7 @@ class TestGenevaAll(unittest2.TestCase):
 							  		lambda x: x * FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
-							  	  , byCountryFilter(blpData, 'China')
+							  	  , byCountryFilter(blpData, 'China - Mainland')
 							  	)(positions)
 							  , 2
 							  )
@@ -58,7 +58,7 @@ class TestGenevaAll(unittest2.TestCase):
 							  		lambda x: x * FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
-							  	  , byCountryFilter(blpData, 'Hong Kong')
+							  	  , byCountryFilter(blpData, 'China - Hong Kong')
 							  	)(positions)
 							  , 2
 							  )
@@ -69,7 +69,7 @@ class TestGenevaAll(unittest2.TestCase):
 							  		lambda x: x * FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
-							  	  , byCountryFilter(blpData, 'Macau')
+							  	  , byCountryFilter(blpData, 'China - Macau')
 							  	)(positions)
 							  , 2
 							  )
@@ -149,7 +149,7 @@ class TestGenevaAll(unittest2.TestCase):
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Additional Tier 1, Contingent Convertibles')
-							  	  , byCountryFilter(blpData, 'China')
+							  	  , byCountryFilter(blpData, 'China - Mainland')
 							  	)(positions)
 							  , 2
 							  )
@@ -161,7 +161,7 @@ class TestGenevaAll(unittest2.TestCase):
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Corporate', 'Investment Grade')
-							  	  , byCountryFilter(blpData, 'Hong Kong')
+							  	  , byCountryFilter(blpData, 'China - Hong Kong')
 							  	)(positions)
 							  , 2
 							  )
@@ -173,7 +173,7 @@ class TestGenevaAll(unittest2.TestCase):
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Corporate', 'Non-Investment Grade', 'Non-Financial')
-							  	  , byCountryFilter(blpData, 'Macau')
+							  	  , byCountryFilter(blpData, 'China - Macau')
 							  	)(positions)
 							  , 2
 							  )

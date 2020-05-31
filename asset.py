@@ -5,7 +5,7 @@
 from risk_report.lqa import getBlpIdnType, getGenevaIdnType
 from risk_report.geneva import isGenevaPosition
 from clamc_datafeed.feeder import getRawPositions, fileToLines
-from utils.iter import pop
+from utils.iter import pop, firstOf
 from toolz.functoolz import compose
 from functools import partial, lru_cache
 from itertools import filterfalse, takewhile
@@ -38,8 +38,11 @@ def byCountryGroup(blpData, countryGroup, positions):
 	)
 
 
+	# matchCountryGroup = lambda blpData, countryGroup, position: \
+	# 	toCountryGroup(blpData, position).lower() == countryGroup.lower()
+
 	matchCountryGroup = lambda blpData, countryGroup, position: \
-		toCountryGroup(blpData, position).lower() == countryGroup.lower()
+		countryGroup.lower().startswith(toCountryGroup(blpData, position).lower())
 
 
 	return filter(partial(matchCountryGroup, blpData, countryGroup), positions)
@@ -446,7 +449,7 @@ def loadCountryGroupMappingFromFile(file):
 	return \
 	compose(
 		dict
-	  , partial(map, lambda line: (line[0], line[2]))
+	  , partial(map, lambda line: (line[0], line[2].strip()))
 	  , partial(takewhile, lambda line: len(line) > 2 and line[0] != '')
 	  , lambda t: t[1]
 	  , lambda lines: (pop(lines), lines)
@@ -522,13 +525,29 @@ def byAssetTypeFilterTuple(blpData, assetTypeStringTuple):
 	, 'non-financial': partial(filterfalse, partial(isFinancial, blpData))
 	}
 
+	getFilter = compose(
+		partial(firstOf, lambda f: f != None)
+	  , lambda assetString: map( lambda key: \
+	  								attributeFilter[key] if assetString.lower().startswith(key) else None
+	  						   , attributeFilter.keys()
+	  						   )
+	)
+
+
+	# return \
+	# partial(filter, lambda _: True) if len(assetTypeStringTuple) == 0 else \
+	# compose( attributeFilter[assetTypeStringTuple[-1].lower()]
+	# 	   , byAssetTypeFilterTuple(blpData, assetTypeStringTuple[0:-1])
+	# 	   ) \
+	# if assetTypeStringTuple[-1].lower() in attributeFilter else \
+	# byAssetTypeOnlyFilterTuple(blpData, assetTypeStringTuple)
 
 	return \
 	partial(filter, lambda _: True) if len(assetTypeStringTuple) == 0 else \
-	compose( attributeFilter[assetTypeStringTuple[-1].lower()]
+	compose( getFilter(assetTypeStringTuple[-1])
 		   , byAssetTypeFilterTuple(blpData, assetTypeStringTuple[0:-1])
 		   ) \
-	if assetTypeStringTuple[-1].lower() in attributeFilter else \
+	if getFilter(assetTypeStringTuple[-1]) != None else \
 	byAssetTypeOnlyFilterTuple(blpData, assetTypeStringTuple)
 
 

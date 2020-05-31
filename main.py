@@ -12,7 +12,9 @@ from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 from risk_report.geneva import readGenevaInvestmentPositionFile, isGenevaPosition \
 							, getGenevaMarketValue, getGenevaBookCurrency
 from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
+from risk_report.sfc import readSfcTemplate
 from clamc_datafeed.feeder import getRawPositions, fileToLines
+from utils.iter import pop
 from utils.utility import writeCsv
 from toolz.functoolz import compose, juxt
 from functools import partial
@@ -167,15 +169,24 @@ def getTotalMarketValueFromCountrynAssetType( positions
 
 
 
-def getTotalMarketValueFromAssetType(reportingCurrency, *assetTypeStrings):
+def getTotalMarketValueFromAssetType( positions
+									, blpData
+									, reportingCurrency
+									, *assetTypeStrings):
 	"""
+	[Iterator] positions
+	[Dictionary] blpData
 	[String] reporting currency, 
 	[String] tier 1 asset type,
 	[String] tier 2 asset type, 
 	...
 		=> [Float] total market value of positions that match the criteria
+
+	This function does not take country as input.
+
+	# FIXME: Add implementation
 	"""
-	return 0
+	lognRaise('getTotalMarketValueFromAssetType(): not implemented')
 
 
 
@@ -198,7 +209,7 @@ def loadFXTableFromFile(file):
 
 	# FIXME: add implementation
 	"""
-	return {('USD', 'HKD'): 7.7520}
+	return {('USD', 'HKD'): 7.7520}	# FX rate as of 2020-04-30
 
 
 
@@ -293,20 +304,44 @@ if __name__ == '__main__':
 	"""
 	Step 6. Try at least one country group and one asset class.
 	"""
+	# compose(
+	# 	print
+	#   , lambda t: getTotalMarketValueFromCountrynAssetType(
+	#   				  t[1]
+	#   				, t[2]
+	#   				, 'USD'
+	#   			    , 'Asia - others (1)'
+	#   			    , 'Fixed Income'
+	#   			    , 'Corporate'
+	#   			    , 'Non-Investment Grade'
+	#   			    , 'Financial Institution'
+	#   			  )
+	#   , lambda inputFile, blpDataFile: \
+	#   		( *readGenevaInvestmentPositionFile(inputFile)
+	#   		, loadBlpDataFromFile(blpDataFile)
+	#   		)	
+	# )(inputFile, blpDataFile)
+
+
+	sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
+	lineToList = lambda headers, line: \
+		list(map(lambda el: (el, ) + line, headers))
+
+	tupleToValue = lambda positions, blpData, t: \
+		getTotalMarketValueFromCountrynAssetType(positions, blpData, 'USD', *t)
+
+	date, positions = readGenevaInvestmentPositionFile(inputFile)
+	blpData = loadBlpDataFromFile(blpDataFile)
+	positions = list(positions)
+
+	lineToValues = lambda line: \
+		list(map(partial(tupleToValue, positions, blpData), line))
+
 	compose(
 		print
-	  , lambda t: getTotalMarketValueFromCountrynAssetType(
-	  				  t[1]
-	  				, t[2]
-	  				, 'USD'
-	  			    , 'Asia - others (1)'
-	  			    , 'Fixed Income'
-	  			    , 'Corporate'
-	  			    , 'Non-Investment Grade'
-	  			    , 'Financial'
-	  			  )
-	  , lambda inputFile, blpDataFile: \
-	  		( *readGenevaInvestmentPositionFile(inputFile)
-	  		, loadBlpDataFromFile(blpDataFile)
-	  		)	
-	)(inputFile, blpDataFile)
+	  , list
+	  , lambda t: map(partial(tupleToValue, positions, blpData), t[2])
+	  , lambda lines: (pop(lines), pop(lines), pop(lines))
+	  , lambda t: map(partial(lineToList, t[0]), t[1])
+	  , readSfcTemplate
+	)(sfcAssetAllocationTemplate)
