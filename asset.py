@@ -3,6 +3,7 @@
 # Asset allocation logic for SFC
 # 
 from risk_report.lqa import getBlpIdnType, getGenevaIdnType
+from risk_report.geneva import isGenevaPosition
 from clamc_datafeed.feeder import getRawPositions, fileToLines
 from utils.iter import pop
 from toolz.functoolz import compose
@@ -226,10 +227,6 @@ def getPrivateSecurityAssetType(position):
 	# FIXME: add implementation
 	logger.debug('getPrivateSecurityAssetType()')
 	raise ValueError
-
-
-
-isGenevaPosition = lambda p: p['Remarks1'].lower().startswith('geneva')
 
 
 

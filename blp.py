@@ -101,6 +101,10 @@ def readBlpFile(file):
 	[String] file => ( [String] date (yyyy-mm-dd)
 					 , [Iterable] positions (with 'date' field updated)
 					 )
+
+	Each position are enriched by the below fields:
+
+	[String] AsOfDate (yyyymmdd), [String] Remarks1
 	"""
 	# [Iterable] lines => [List] line that contains the date
 	findDateLine = partial(
@@ -121,9 +125,22 @@ def readBlpFile(file):
 	)
 
 
+	addNewFields = lambda date, position: \
+		mergeDict( position
+				 , { 'AsOfDate': date
+				   , 'Remarks1': 'Bloomberg MAV Risk-Mon Steven'
+				   }
+				 )
+
+
+	processPositions = lambda date, positions: \
+		map( partial(addNewFields, date)
+		   , filterfalse(lambda p: p['Account Code'] == '', positions))
+
+
 	return \
 	compose(
-		lambda t: (t[0], filterfalse(lambda p: p['Account Code'] == '', t[1]))
+		lambda t: (t[0], processPositions(t[0], t[1]))
 	  , lambda lines: (getDateFromLines(lines), getPositions(lines))
 	  , fileToLines
 	  , lambda file: lognContinue('readBlpFile(): {0}'.format(file), file)
@@ -131,55 +148,91 @@ def readBlpFile(file):
 
 
 
-def saveBlpPositionToDB(file):
-	"""
-	[String] file => [Int] 0 (if successful or raise exception otherwise)
+isBlpPosition = lambda position: \
+	position['Remarks1'].startswith('Bloomberg')
 
-	Side effect: save positions to a database
 
-	Read Blp Positions from a file and save them into a database
-	"""
 
-	"""
-		[Dictionary] position => [Dictionary] position
+"""
+	[Dictionary] position => [Float] market value of the position
 
-		Enrich the position before saving the document to database.
+# FIXME: add implementation
+"""
+getBlpMarketValue = lambda position: \
+	lognRaise('getBlpMarketValue(): not implemented')
 
-		1) Shall we add a 'AsOfDate' field, or keep using the 'PeriodEndDate'?
 
-		If we add an 'AsOfDate' field for all database documents for which
-		this field makes sense, then in the future it can make our query more
-		standardized, since we are going to have lots of queries that require
-		the as of date for something.
 
-		To do this, we need to use a consistent format for this AsOfDate, 
-		maybe the 'date' type of MongoDB?
+""" [Dictionary] position => [String] date of the position (yyyy-mm-dd) """
+getBlpPositionDate = lambda position: position['AsOfDate']
 
-		2) Shall we add a '_id' field to prevent saving identical positions 
-		into the MongoDB?
 
-		Say we run this function twice on the same file. Then we will have two 
-		identical sets of records except their "_id" fields. Maybe we should 
-		add an '_id' field to avoid this.
+
+""" [Dictionary] position => [String] Book currency of the position """
+getBlpBookCurrency = lambda position: \
+	getBookCurrency(position['Account Code'])
+
+
+
+"""
+	[String] account code => [String] Book currency of the account
+
+# FIXME: add implementation
+"""
+getBookCurrency = lambda accountCode: \
+	lognRaise('getBookCurrency(): not implemented')
+
+
+
+# def saveBlpPositionToDB(file):
+# 	"""
+# 	[String] file => [Int] 0 (if successful or raise exception otherwise)
+
+# 	Side effect: save positions to a database
+
+# 	Read Blp Positions from a file and save them into a database
+# 	"""
+
+# 	"""
+# 		[Dictionary] position => [Dictionary] position
+
+# 		Enrich the position before saving the document to database.
+
+# 		1) Shall we add a 'AsOfDate' field, or keep using the 'PeriodEndDate'?
+
+# 		If we add an 'AsOfDate' field for all database documents for which
+# 		this field makes sense, then in the future it can make our query more
+# 		standardized, since we are going to have lots of queries that require
+# 		the as of date for something.
+
+# 		To do this, we need to use a consistent format for this AsOfDate, 
+# 		maybe the 'date' type of MongoDB?
+
+# 		2) Shall we add a '_id' field to prevent saving identical positions 
+# 		into the MongoDB?
+
+# 		Say we run this function twice on the same file. Then we will have two 
+# 		identical sets of records except their "_id" fields. Maybe we should 
+# 		add an '_id' field to avoid this.
 		
-		Idealy, there is be no more than one document for a position if:
+# 		Idealy, there is be no more than one document for a position if:
 
-		1) It's a position record from Geneva system;
-		2) For any particular security;
-		3) For any particular portfolio;
-		4) For any particular date;
+# 		1) It's a position record from Geneva system;
+# 		2) For any particular security;
+# 		3) For any particular portfolio;
+# 		4) For any particular date;
 	
-		So:
+# 		So:
 
-		_id = 'blp' + portfolio id + date + name?
+# 		_id = 'blp' + portfolio id + date + name?
 
-		The purpose is make the id unique as long as the above (1-4) are satisfied.
-	"""
-	addNewFields = lambda date, p: \
-		mergeDict(p, {'DataSource': 'aim', 'RecordType': 'position'})
+# 		The purpose is make the id unique as long as the above (1-4) are satisfied.
+# 	"""
+# 	addNewFields = lambda date, p: \
+# 		mergeDict(p, {'DataSource': 'aim', 'RecordType': 'position'})
 
 
-	return 0
+# 	return 0
 # End of saveBlpPositionToDB()
 
 

@@ -7,8 +7,11 @@
 from risk_report.utility import getCurrentDirectory
 from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
-							, getAverageRatingScore, getCountryCode, byCountryGroup
-from risk_report.geneva import readGenevaInvestmentPositionFile
+							, getAverageRatingScore, getCountryCode, byCountryGroup \
+							, byAssetTypeFilterTuple, byCountryFilter
+from risk_report.geneva import readGenevaInvestmentPositionFile, isGenevaPosition \
+							, getGenevaMarketValue, getGenevaBookCurrency
+from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
 from clamc_datafeed.feeder import getRawPositions, fileToLines
 from utils.utility import writeCsv
 from toolz.functoolz import compose, juxt
@@ -106,6 +109,99 @@ def getFISecuritiesWoRatings(blpData, positions):
 
 
 
+"""
+	[Dictionary] position => [Float] market value of the position
+"""
+getMarketValue = lambda position: \
+	getGenevaMarketValue(position) if isGenevaPosition(position) else \
+	getBlpMarketValue(position)
+
+
+
+"""
+	[Dictionary] position => [String] book currency of the position
+"""
+getBookCurrency = lambda position: \
+	getGenevaBookCurrency(position) if isGenevaPosition(position) else \
+	getBlpBookCurrency(position)
+
+
+
+def getTotalMarketValueFromCountrynAssetType( positions
+											, blpData
+											, reportingCurrency
+											, countryGroup
+											, *assetTypeStrings):
+	"""
+	[Iterator] positions
+	[Dictionary] blpData
+	[String] reporting currency, 
+	[String] countryGroup, 
+	[String] tier 1 asset type,
+	[String] tier 2 asset type, 
+	...
+		=> [Float] total market value of positions that match the criteria
+
+	For example, 
+
+	('USD', 'China') -> sum up market value in USD of all positions from China
+	('HKD', 'Hong Kong', 'Equity') -> sum up in HKD of all positions from Hong Kong
+										whose type is 'Equity'
+	
+	The below are also valid parameters
+	('USD', 'America - others (1)', 'Fixed Income', 'Government / Municiple', 'Investment Grade')
+	( 'USD', 'United States of America', 'Fixed Income', 'Corporate'
+	, 'Investment Grade', 'Financial Institutions')
+	"""
+	marketValueInReportingCurrency = lambda position: \
+		getMarketValue(position) / getFXRate(reportingCurrency, getBookCurrency(position))
+
+
+	return \
+	compose(
+		sum
+	  , partial(map, marketValueInReportingCurrency)
+	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
+	  , byCountryFilter(blpData, countryGroup)
+	)(positions)
+
+
+
+def getTotalMarketValueFromAssetType(reportingCurrency, *assetTypeStrings):
+	"""
+	[String] reporting currency, 
+	[String] tier 1 asset type,
+	[String] tier 2 asset type, 
+	...
+		=> [Float] total market value of positions that match the criteria
+	"""
+	return 0
+
+
+
+def getFXRate(c1, c2):
+	"""
+	[String] c1 (currency), [String] c2 (currency)
+		=> [Float] exchange rate to convert 1 unit of c1 to c2
+
+	For example, getFXRate('USD', 'HKD') = 7.8120
+
+	# FIXME: another parameter, date, is needed because FX rates change over time.
+	"""
+	return loadFXTableFromFile('FXRate.xlsx')[(c1, c2)]
+
+
+
+def loadFXTableFromFile(file):
+	"""
+	[String] fx rate file => [Dictionary] (c1, c2) -> exchange rate
+
+	# FIXME: add implementation
+	"""
+	return {('USD', 'HKD'): 7.7520}
+
+
+
 def lognContinue(msg, x):
 	logger.debug(msg)
 	return x
@@ -123,7 +219,8 @@ if __name__ == '__main__':
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
 	inputFile = join( getCurrentDirectory()
-					, 'DIF_investment_positions_20190331.xlsx'
+					, 'samples'
+					, 'DIF_20200429_investment_position.xlsx'
 					)
 
 	# Step 1. Create a file containing the (id, idtype) columns.
@@ -134,7 +231,8 @@ if __name__ == '__main__':
 
 	# Step 3. Check if all asset types can be determined.
 	blpDataFile = join( getCurrentDirectory()
-					  , 'BlpData_DIF_20190331.xlsx'
+					  , 'samples'
+					  , 'DIF_20200429_BlpData.xlsx'
 					  )
 
 	# compose(
@@ -192,9 +290,23 @@ if __name__ == '__main__':
 	# )(inputFile, blpDataFile)
 
 
-	def show2(x, *args):
-		print(len(args))
-		print(args)
-		print(args[1:])
-
-	show2(2)
+	"""
+	Step 6. Try at least one country group and one asset class.
+	"""
+	compose(
+		print
+	  , lambda t: getTotalMarketValueFromCountrynAssetType(
+	  				  t[1]
+	  				, t[2]
+	  				, 'USD'
+	  			    , 'Asia - others (1)'
+	  			    , 'Fixed Income'
+	  			    , 'Corporate'
+	  			    , 'Non-Investment Grade'
+	  			    , 'Financial'
+	  			  )
+	  , lambda inputFile, blpDataFile: \
+	  		( *readGenevaInvestmentPositionFile(inputFile)
+	  		, loadBlpDataFromFile(blpDataFile)
+	  		)	
+	)(inputFile, blpDataFile)

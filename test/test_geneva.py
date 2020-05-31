@@ -2,7 +2,7 @@
 # 
 
 import unittest2
-from risk_report.geneva import readGenevaInvestmentPositionFile
+from risk_report.geneva import readGenevaInvestmentPositionFile, getGenevaPositionDate
 from risk_report.lqa import getGenevaLqaPositions
 from risk_report.utility import getCurrentDirectory
 from utils.iter import firstOf
@@ -67,7 +67,7 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual('Corporate Bond', p['SortKey'])
 		self.assertEqual(3000000, p['Position'])
 		self.assertEqual('United States Dollar', p['LocalCurrency'])
-		self.assertEqual('20200429', p['AsOfDate'])
+		self.assertEqual('20200429', getGenevaPositionDate(p))
 		self.assertEqual('19437', p['Portfolio'])
 		self.assertEqual('HKD', p['BookCurrency'])
 		self.assertEqual('Geneva', p['Remarks1'][0:6])
@@ -80,7 +80,7 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual('Exchange Trade Fund', p['SortKey'])
 		self.assertEqual(530000, p['Position'])
 		self.assertEqual('Hong Kong Dollar', p['LocalCurrency'])
-		self.assertEqual('20200429', p['AsOfDate'])
+		self.assertEqual('20200429', getGenevaPositionDate(p))
 		self.assertEqual('19437', p['Portfolio'])
 		self.assertEqual('HKD', p['BookCurrency'])
 		self.assertEqual('Geneva', p['Remarks1'][0:6])
@@ -93,7 +93,7 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual('Corporate Bond', p['SortKey'])
 		self.assertEqual(2000000, p['Position'])
 		self.assertEqual('United States Dollar', p['LocalCurrency'])
-		self.assertEqual('20200131', p['AsOfDate'])
+		self.assertEqual('20200131', getGenevaPositionDate(p))
 		self.assertEqual('19437', p['Portfolio'])
 		self.assertEqual('HKD', p['BookCurrency'])
 		self.assertEqual('Geneva', p['Remarks1'][0:6])
@@ -101,7 +101,7 @@ class TestGeneva(unittest2.TestCase):
 
 
 	def verifyInvestmentPosition(self, p):
-		self.assertEqual('20200429', p['AsOfDate'])
+		self.assertEqual('20200429', getGenevaPositionDate(p))
 		self.assertEqual('19437', p['Portfolio'])
 		self.assertEqual('HKD', p['BookCurrency'])
 		self.assertEqual('Geneva', p['Remarks1'].split()[0])

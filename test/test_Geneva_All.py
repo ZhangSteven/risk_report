@@ -3,7 +3,8 @@
 
 import unittest2
 from risk_report.asset import byCountryFilter, byAssetTypeFilter
-from risk_report.geneva import readGenevaInvestmentPositionFile
+from risk_report.geneva import readGenevaInvestmentPositionFile \
+							, getGenevaMarketValue
 from risk_report.main import loadBlpDataFromFile
 from risk_report.utility import getCurrentDirectory
 from toolz.functoolz import compose
@@ -39,10 +40,7 @@ class TestGenevaAll(unittest2.TestCase):
 		)(inputFile)
 
 
-		getGenevaMarketValue = lambda position: \
-			position['AccruedInterest'] + position['MarketValueBook']
-
-
+		
 		# Now we test by different country groups
 		self.assertAlmostEqual( 394165723.69
 							  , compose(
@@ -187,6 +185,18 @@ class TestGenevaAll(unittest2.TestCase):
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Government / Municipal')
+							  	  , byCountryFilter(blpData, 'Asia - others (1)')
+							  	)(positions)
+							  , 2
+							  )
+
+
+		self.assertAlmostEqual( 13607814.13 
+							  , compose(
+							  		lambda x: x * FX
+							  	  , sum
+							  	  , partial(map, getGenevaMarketValue)
+							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Corporate', 'Non-Investment Grade', 'Financial')
 							  	  , byCountryFilter(blpData, 'Asia - others (1)')
 							  	)(positions)
 							  , 2

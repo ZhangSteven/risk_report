@@ -13,8 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 
-def getGenevaInvestmentPositions(lines):
-	"""
+""" [String] dt (yyyy-mm-dd) => [String] dt (yyyymmdd) """
+changeDateFormat = lambda dt: ''.join(dt.split('-'))
+
+
+
+"""
 	[Iterator] lines => ( [String] date (yyyymmdd)
 						, [Iterator] positions
 						)
@@ -24,26 +28,17 @@ def getGenevaInvestmentPositions(lines):
 	
 	Each position are enriched by the below fields:
 
-	[String] AsOfDate (yyyymmdd), [String] Remarks1
-	"""
-
-	# [String] dt (yyyy-mm-dd) => [String] dt (yyyymmdd)
-	changeDateFormat = lambda dt: ''.join(dt.split('-'))
-
-	return compose(
-		lambda t: ( changeDateFormat(t[0]['PeriodEndDate'])
-				  , map( lambda p: \
-				  			mergeDict( p
-				  					 , { 'AsOfDate': changeDateFormat(p['PeriodEndDate'])
-				  					   , 'Remarks1': 'Geneva investment positions report'
-				  					   }
-				  					 )
-				  	   , t[1]
-				  	   )
-				  )
-	  , getPositions
-
-	)(lines)
+	[String] Remarks1
+"""
+getGenevaInvestmentPositions = compose(
+	lambda t: ( changeDateFormat(t[0]['PeriodEndDate'])
+			  , map( lambda p: \
+			  			mergeDict(p, {'Remarks1': 'Geneva investment positions report'})
+			  	   , t[1]
+			  	   )
+			  )
+  , getPositions
+)
 
 
 
@@ -109,6 +104,30 @@ def saveGenevaPositionToDB(file):
 
 	return 0
 # End of saveGenevaPositionToDB()
+
+
+
+""" [Dictionary] position => [Bool] is it a Geneva position """
+isGenevaPosition = lambda p: \
+	p['Remarks1'].lower().startswith('geneva')
+
+
+
+""" [Dictionary] position => [Float] market value of this position """
+getGenevaMarketValue = lambda position: \
+	position['AccruedInterest'] + position['MarketValueBook']
+
+
+
+""" [Dictionary] position => [String] date (yyyy-mm-dd) """
+getGenevaPositionDate = lambda position: \
+	changeDateFormat(position['PeriodEndDate'])
+
+
+
+""" [Dictionary] position => [String] book currency of this position """
+getGenevaBookCurrency = lambda position: \
+	position['BookCurrency']
 
 
 
