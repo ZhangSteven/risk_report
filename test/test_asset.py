@@ -60,12 +60,12 @@ class TestAsset(unittest2.TestCase):
 
 		# The iShares A50 China ETF
 		isA50Fund = lambda x: x['InvestID'] == '2823 HK'
-		self.assertEqual( ('Fund', 'Exchange Traded Funds')
+		self.assertEqual( ('Fund', 'Exchange Traded Funds', 'SFC authorized')
 						, getAssetType(blpData, firstOf(isA50Fund, positions)))
 
 		# The LINK REIT
 		isREITFund = lambda x: x['InvestID'] == '823 HK'
-		self.assertEqual( ('Fund', 'Real Estate Investment Trusts')
+		self.assertEqual( ('Fund', 'Real Estate Investment Trusts', 'SFC authorized')
 						, getAssetType(blpData, firstOf(isREITFund, positions)))
 
 

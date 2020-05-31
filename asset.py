@@ -202,22 +202,34 @@ def getGenevaFundType(position):
 
 	If position is a fund type in Geneva, output its exact fund type
 	"""
-	def getGenevaOpenFundType(position):
-		# FIXME: Add mapping for open end fund here, what's the fund type
-		# for DIF?
-		# fMap = {'CLFLDIF HK': ('Fund', 'Other Funds')}
-		fMap = {}
-		try:
-			return fMap[position['InvestID']]
-		except KeyError:
-			lognRaise('getGenevaOpenFundType(): invalid position: {0}'.format(getIdnType(position)))
+	# def getGenevaOpenFundType(position):
+	# 	# FIXME: Add mapping for open end fund here, what's the fund type
+	# 	# for DIF?
+	# 	# fMap = {'CLFLDIF HK': ('Fund', 'Other Funds')}
+	# 	fMap = {}
+	# 	try:
+	# 		return fMap[position['InvestID']]
+	# 	except KeyError:
+	# 		lognRaise('getGenevaOpenFundType(): invalid position: {0}'.format(getIdnType(position)))
 
+
+	# return \
+	# ('Fund', 'Exchange Traded Funds') if position['SortKey'] == 'Exchange Trade Fund' else \
+	# ('Fund', 'Real Estate Investment Trusts') if position['SortKey'] == 'Real Estate Investment Trust' else \
+	# getGenevaOpenFundType(position) if position['SortKey'] == 'Open-End Fund' else \
+	# lognRaise('getGenevaFundType(): invalid position: {0}'.format(getIdnType(position)))
+
+	"""
+	For fund types, we use case by case handling. Because there is no way to tell
+	whether a fund is SFC authorized or not.
+	"""
+	fMap = { '823 HK' : ('Fund', 'Real Estate Investment Trusts', 'SFC authorized')
+		   , '2823 HK': ('Fund', 'Exchange Traded Funds', 'SFC authorized')
+		   }
 
 	return \
-	('Fund', 'Exchange Traded Funds') if position['SortKey'] == 'Exchange Trade Fund' else \
-	('Fund', 'Real Estate Investment Trusts') if position['SortKey'] == 'Real Estate Investment Trust' else \
-	getGenevaOpenFundType(position) if position['SortKey'] == 'Open-End Fund' else \
-	lognRaise('getGenevaFundType(): invalid position: {0}'.format(getIdnType(position)))
+	fMap[position['InvestID']] if position['InvestID'] in fMap else \
+	lognRaise('getGenevaFundType(): not supported: {0}'.format(getIdnType(position)))
 
 
 
@@ -423,7 +435,7 @@ getRatingScore = lambda agency, rating: \
 
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=32)
 def loadRatingScoreMappingFromFile(file):
 	"""
 	[String] rating score mapping file 
@@ -441,7 +453,7 @@ def loadRatingScoreMappingFromFile(file):
 
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=32)
 def loadCountryGroupMappingFromFile(file):
 	"""
 	[String] file => [Dictionary] country code -> country group

@@ -324,24 +324,23 @@ if __name__ == '__main__':
 
 
 	sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
-	lineToList = lambda headers, line: \
-		list(map(lambda el: (el, ) + line, headers))
+	assetTypeWithCountry = lambda headers, assetType: \
+		map(lambda el: (el, ) + assetType, headers)
 
-	tupleToValue = lambda positions, blpData, t: \
+	assetTypeWithCountryToMarketValue = lambda positions, blpData, t: \
 		getTotalMarketValueFromCountrynAssetType(positions, blpData, 'USD', *t)
 
 	date, positions = readGenevaInvestmentPositionFile(inputFile)
 	blpData = loadBlpDataFromFile(blpDataFile)
 	positions = list(positions)
 
-	lineToValues = lambda line: \
-		list(map(partial(tupleToValue, positions, blpData), line))
+	assetTypeLineToValues = lambda line: \
+		map(partial(assetTypeWithCountryToMarketValue, positions, blpData), line)
 
-	compose(
-		print
-	  , list
-	  , lambda t: map(partial(tupleToValue, positions, blpData), t[2])
-	  , lambda lines: (pop(lines), pop(lines), pop(lines))
-	  , lambda t: map(partial(lineToList, t[0]), t[1])
+	linesOfAllocationStrings = compose(
+		list
+	  , lambda t: map(partial(assetTypeWithCountry, t[0]), t[1])
 	  , readSfcTemplate
 	)(sfcAssetAllocationTemplate)
+
+	print(list(assetTypeLineToValues(linesOfAllocationStrings[6])))
