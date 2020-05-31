@@ -338,9 +338,14 @@ if __name__ == '__main__':
 		map(partial(assetTypeWithCountryToMarketValue, positions, blpData), line)
 
 	linesOfAllocationStrings = compose(
-		list
-	  , lambda t: map(partial(assetTypeWithCountry, t[0]), t[1])
+		lambda t: map(partial(assetTypeWithCountry, t[0]), t[1])
 	  , readSfcTemplate
 	)(sfcAssetAllocationTemplate)
 
-	print(list(assetTypeLineToValues(linesOfAllocationStrings[6])))
+	from datetime import datetime
+	print(datetime.now())
+	
+	for line in linesOfAllocationStrings:
+		print(list(assetTypeLineToValues(line)))
+
+	print(datetime.now())
