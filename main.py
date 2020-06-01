@@ -213,6 +213,42 @@ def loadFXTableFromFile(file):
 
 
 
+def writeAssetAllocationCsv(date, positions, blpData, sfcAssetAllocationTemplate):
+	"""
+	[String] date
+	[Iterator] positions
+	[Dictionary] blpData
+	[String] sfc asset allocation template file
+		=> [String] output csv file name
+
+	Side effect: create a csv file.
+
+	NOTE: this function can take a few minutes to complete, especially when logging
+	level is set to DEBUG.
+	"""
+	assetTypeWithCountry = lambda headers, assetType: \
+		map(lambda el: (el, ) + assetType, headers)
+
+	assetTypeWithCountryToMarketValue = lambda positions, blpData, t: \
+		getTotalMarketValueFromCountrynAssetType(positions, blpData, 'USD', *t)
+
+	assetTypeLineToValues = lambda positions, blpData, line: \
+		map( partial(assetTypeWithCountryToMarketValue, positions, blpData)
+		   , line)
+
+
+	return \
+	compose(
+		lambda lines: writeCsv( 'asset_allocation_' + date + '.csv'
+							  , lines)
+	  , partial( map
+	  		   , partial(assetTypeLineToValues, list(positions), blpData))
+	  , lambda t: map(partial(assetTypeWithCountry, t[0]), t[1])
+	  , lambda _1, _2, _3, sfcFile: readSfcTemplate(sfcFile)
+	)(date, positions, blpData, sfcAssetAllocationTemplate)
+
+
+
 def lognContinue(msg, x):
 	logger.debug(msg)
 	return x
@@ -302,8 +338,11 @@ if __name__ == '__main__':
 
 
 	"""
-	Step 6. Try at least one country group and one asset class.
+	Step 6. Write a output csv with the country groups and asset types in the
+	SFC template file. Update that template file if necessary.
 	"""
+	# Do this to play around with different selection criteria.
+	# 
 	# compose(
 	# 	print
 	#   , lambda t: getTotalMarketValueFromCountrynAssetType(
@@ -324,28 +363,13 @@ if __name__ == '__main__':
 
 
 	sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
-	assetTypeWithCountry = lambda headers, assetType: \
-		map(lambda el: (el, ) + assetType, headers)
+	compose(
+		print
+	  , lambda t: \
+	  		writeAssetAllocationCsv(t[0], t[1], t[2], sfcAssetAllocationTemplate)
 
-	assetTypeWithCountryToMarketValue = lambda positions, blpData, t: \
-		getTotalMarketValueFromCountrynAssetType(positions, blpData, 'USD', *t)
-
-	date, positions = readGenevaInvestmentPositionFile(inputFile)
-	blpData = loadBlpDataFromFile(blpDataFile)
-	positions = list(positions)
-
-	assetTypeLineToValues = lambda line: \
-		map(partial(assetTypeWithCountryToMarketValue, positions, blpData), line)
-
-	linesOfAllocationStrings = compose(
-		lambda t: map(partial(assetTypeWithCountry, t[0]), t[1])
-	  , readSfcTemplate
-	)(sfcAssetAllocationTemplate)
-
-	from datetime import datetime
-	print(datetime.now())
-	
-	for line in linesOfAllocationStrings:
-		print(list(assetTypeLineToValues(line)))
-
-	print(datetime.now())
+	  , lambda inputFile, blpDataFile, _: \
+	  		( *readGenevaInvestmentPositionFile(inputFile)
+	  		, loadBlpDataFromFile(blpDataFile)
+	  		)
+	)(inputFile, blpDataFile, sfcAssetAllocationTemplate)

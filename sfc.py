@@ -27,7 +27,7 @@ def readSfcTemplate(file):
 		len(line) == 0 or not line[0].startswith('By asset class / by region')
 
 	takeBetweenLines = compose(
-		partial(takewhile, lambda line: len(line) > 0 and line[0] != 'Others')
+		partial(takewhile, lambda line: len(line) > 0 and line[0] != 'Total')
 	  , partial(dropwhile, notHeaderLine)
 	)
 
@@ -50,7 +50,8 @@ def readSfcTemplate(file):
 	)
 
 	lineToTuple = compose(
-		lambda t: t[0:-1] if t[-1] == t[-2] else t
+		lambda t: t if len(t) < 2 or t[-1] != t[-2] else t[:-1]	# in case the last 2 
+																# criteria are the same
 	  , removeTrailingSpaces
 	)
 
