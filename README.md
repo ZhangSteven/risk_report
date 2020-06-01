@@ -11,7 +11,15 @@ Purpose of this application:
 
 ## To Do
 
-1. Add test case for consolicated positions after merging BLP and Geneva positions.
+1. Add asset special case file, containing asset type and country information for those private security, open ended fund and override security.
+
+2. Add test cases for the asset allocation with new funcitons, with the special case in (1).
+
+3. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
+
+4. Consider using Geneva as the asset type provider?
+
+5. Add test case for consolicated positions after merging BLP and Geneva positions.
 
 
 ## Note
@@ -25,7 +33,7 @@ Purpose of this application:
 
 ## Know Issues
 
-1. Fitch rating: 'BBB \*-', Moody's rating 'B1u' and 'Caa1u' have no rating score. Steven Zhang adds some estimates to RatingScore.xlsx, needs to confirm with Daphne.
+
 
 
 ## Bloomberg Positions

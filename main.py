@@ -13,7 +13,7 @@ from risk_report.geneva import readGenevaInvestmentPositionFile, isGenevaPositio
 							, getGenevaMarketValue, getGenevaBookCurrency
 from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
 from risk_report.sfc import readSfcTemplate
-from clamc_datafeed.feeder import getRawPositions, fileToLines
+from utils.excel import getRawPositions, fileToLines
 from utils.iter import pop
 from utils.utility import writeCsv
 from toolz.functoolz import compose, juxt
@@ -129,6 +129,14 @@ getBookCurrency = lambda position: \
 
 
 
+""" [Dictionary] position, [String] reportingCurrency
+		=> [Float] market value in reporting currency
+"""
+marketValueInReportingCurrency = lambda reportingCurrency, position: \
+	getMarketValue(position) / getFXRate(reportingCurrency, getBookCurrency(position))
+
+
+
 def getTotalMarketValueFromCountrynAssetType( positions
 											, blpData
 											, reportingCurrency
@@ -144,25 +152,25 @@ def getTotalMarketValueFromCountrynAssetType( positions
 	...
 		=> [Float] total market value of positions that match the criteria
 
+	From the input positions, filter out those that match the selection criteria,
+	and then sum up their market value in reporting currency.
+
 	For example, 
 
 	('USD', 'China') -> sum up market value in USD of all positions from China
 	('HKD', 'Hong Kong', 'Equity') -> sum up in HKD of all positions from Hong Kong
 										whose type is 'Equity'
 	
-	The below are also valid parameters
+	Other examples are:
+
 	('USD', 'America - others (1)', 'Fixed Income', 'Government / Municiple', 'Investment Grade')
 	( 'USD', 'United States of America', 'Fixed Income', 'Corporate'
 	, 'Investment Grade', 'Financial Institutions')
 	"""
-	marketValueInReportingCurrency = lambda position: \
-		getMarketValue(position) / getFXRate(reportingCurrency, getBookCurrency(position))
-
-
 	return \
 	compose(
 		sum
-	  , partial(map, marketValueInReportingCurrency)
+	  , partial(map, partial(marketValueInReportingCurrency, reportingCurrency))
 	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
 	  , byCountryFilter(blpData, countryGroup)
 	)(positions)
@@ -182,11 +190,13 @@ def getTotalMarketValueFromAssetType( positions
 	...
 		=> [Float] total market value of positions that match the criteria
 
-	This function does not take country as input.
-
-	# FIXME: Add implementation
 	"""
-	lognRaise('getTotalMarketValueFromAssetType(): not implemented')
+	return \
+	compose(
+		sum
+	  , partial(map, partial(marketValueInReportingCurrency, reportingCurrency))
+	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
+	)(positions)
 
 
 
@@ -213,12 +223,14 @@ def loadFXTableFromFile(file):
 
 
 
-def writeAssetAllocationCsv(date, positions, blpData, sfcAssetAllocationTemplate):
+def writeAssetAllocationCsv(date, positions, blpData, countries, assetTypes):
 	"""
-	[String] date
-	[Iterator] positions
-	[Dictionary] blpData
-	[String] sfc asset allocation template file
+	[String] date,
+	[Iterator] positions,
+	[Dictionary] blpData,
+	[List] countries, (e.g., ['China - Hong Kong', 'China - Mainland', 'Singapore'])
+	[Iterator] assetTypes (each assetType is a tuple like ('Fixed Income', 'Corporate', 'Investment Grade'))
+		
 		=> [String] output csv file name
 
 	Side effect: create a csv file.
@@ -226,8 +238,8 @@ def writeAssetAllocationCsv(date, positions, blpData, sfcAssetAllocationTemplate
 	NOTE: this function can take a few minutes to complete, especially when logging
 	level is set to DEBUG.
 	"""
-	assetTypeWithCountry = lambda headers, assetType: \
-		map(lambda el: (el, ) + assetType, headers)
+	assetTypeWithCountry = lambda countries, assetType: \
+		map(lambda el: (el, ) + assetType, countries)
 
 	assetTypeWithCountryToMarketValue = lambda positions, blpData, t: \
 		getTotalMarketValueFromCountrynAssetType(positions, blpData, 'USD', *t)
@@ -241,11 +253,9 @@ def writeAssetAllocationCsv(date, positions, blpData, sfcAssetAllocationTemplate
 	compose(
 		lambda lines: writeCsv( 'asset_allocation_' + date + '.csv'
 							  , lines)
-	  , partial( map
-	  		   , partial(assetTypeLineToValues, list(positions), blpData))
-	  , lambda t: map(partial(assetTypeWithCountry, t[0]), t[1])
-	  , lambda _1, _2, _3, sfcFile: readSfcTemplate(sfcFile)
-	)(date, positions, blpData, sfcAssetAllocationTemplate)
+	  , partial(map, partial(assetTypeLineToValues, list(positions), blpData))
+	  , partial(map, partial(assetTypeWithCountry, countries))
+	)(assetTypes)
 
 
 
@@ -362,14 +372,29 @@ if __name__ == '__main__':
 	# )(inputFile, blpDataFile)
 
 
+	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
+	# compose(
+	# 	print
+	#   , lambda t: getTotalMarketValueFromAssetType(
+	#   				  t[1]
+	#   				, t[2]
+	#   				, 'USD'
+	#   			    , 'Cash'
+	#   			  )
+	#   , lambda inputFile, blpDataFile: \
+	#   		( *readGenevaInvestmentPositionFile(inputFile)
+	#   		, loadBlpDataFromFile(blpDataFile)
+	#   		)	
+	# )(inputFile, blpDataFile)
+
+
 	sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
 	compose(
 		print
-	  , lambda t: \
-	  		writeAssetAllocationCsv(t[0], t[1], t[2], sfcAssetAllocationTemplate)
-
-	  , lambda inputFile, blpDataFile, _: \
+	  , lambda t: writeAssetAllocationCsv(t[0], t[1], t[2], t[3], t[4])
+	  , lambda inputFile, blpDataFile, sfcAssetAllocationTemplate: \
 	  		( *readGenevaInvestmentPositionFile(inputFile)
 	  		, loadBlpDataFromFile(blpDataFile)
+	  		, *readSfcTemplate(sfcAssetAllocationTemplate)
 	  		)
 	)(inputFile, blpDataFile, sfcAssetAllocationTemplate)

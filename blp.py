@@ -7,10 +7,9 @@ from itertools import takewhile, dropwhile, filterfalse
 from functools import partial
 from toolz.functoolz import compose
 from utils.iter import pop, firstOf
-from utils.excel import worksheetToLines
+from utils.excel import fileToLines
 from utils.utility import mergeDict
 from risk_report.utility import getCurrentDirectory
-from xlrd import open_workbook
 from datetime import datetime
 from os.path import join
 import logging, re
@@ -234,17 +233,6 @@ getBookCurrency = lambda accountCode: \
 
 # 	return 0
 # End of saveBlpPositionToDB()
-
-
-
-def fileToLines(file):
-	"""
-	[String] file => [Iterable] lines
-
-	Read an Excel file, convert its first sheet into lines, each line is
-	a list of the columns in the row.
-	"""
-	return worksheetToLines(open_workbook(file).sheet_by_index(0))
 
 
 

@@ -8,7 +8,7 @@
 
 from risk_report.blp import readBlpFile
 from risk_report.geneva import readGenevaInvestmentPositionFile
-from clamc_datafeed.feeder import fileToLines
+from utils.excel import fileToLines
 from utils.iter import pop
 from functools import partial, reduce
 from itertools import chain, filterfalse, dropwhile, takewhile

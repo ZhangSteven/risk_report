@@ -4,8 +4,9 @@
 # 
 from risk_report.lqa import getBlpIdnType, getGenevaIdnType
 from risk_report.geneva import isGenevaPosition
-from clamc_datafeed.feeder import getRawPositions, fileToLines
+from utils.excel import getRawPositions, fileToLines
 from utils.iter import pop, firstOf
+from utils.utility import mergeDict
 from toolz.functoolz import compose
 from functools import partial, lru_cache
 from itertools import filterfalse, takewhile
@@ -465,6 +466,39 @@ def loadCountryGroupMappingFromFile(file):
 	  , partial(takewhile, lambda line: len(line) > 2 and line[0] != '')
 	  , lambda t: t[1]
 	  , lambda lines: (pop(lines), lines)
+	  , fileToLines
+	)(file)
+
+
+
+@lru_cache(maxsize=32)
+def loadAssetTypeSpecialCaseFromFile(file):
+	"""
+	[String] file => [Dictionary] ID -> [Dictionary] security info
+	"""
+	stringToTuple = compose(
+		tuple
+	  , partial(map, lambda s: s.strip())
+	  , lambda s: s.split(',')
+	)
+
+
+	updatePosition = lambda position: mergeDict(
+		position
+	  , { 'Portfolio': str(int(position['Portfolio'])) \
+	  					if isinstance(position['Portfolio'], float) \
+	  					else position['Portfolio']
+	  	, 'AssetType': stringToTuple(position['AssetType'])
+	  	}
+	)
+
+
+	return \
+	compose(
+		dict
+	  , partial(map, lambda p: (p['ID'], p))
+	  , partial(map, updatePosition)
+	  , getRawPositions
 	  , fileToLines
 	)(file)
 

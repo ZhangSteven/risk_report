@@ -5,7 +5,7 @@
 
 from risk_report.utility import getCurrentDirectory
 from utils.iter import pop, firstOf
-from clamc_datafeed.feeder import fileToLines
+from utils.excel import fileToLines
 from functools import partial
 from itertools import takewhile, dropwhile, chain, repeat, zip_longest
 from toolz.functoolz import compose

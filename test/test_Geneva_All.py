@@ -5,7 +5,8 @@ import unittest2
 from risk_report.asset import byCountryFilter, byAssetTypeFilter
 from risk_report.geneva import readGenevaInvestmentPositionFile \
 							, getGenevaMarketValue
-from risk_report.main import loadBlpDataFromFile
+from risk_report.main import loadBlpDataFromFile, getTotalMarketValueFromAssetType \
+							, getTotalMarketValueFromCountrynAssetType
 from risk_report.utility import getCurrentDirectory
 from toolz.functoolz import compose
 from functools import partial

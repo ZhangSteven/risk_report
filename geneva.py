@@ -4,9 +4,10 @@
 #
 
 from xlrd import open_workbook
-from clamc_datafeed.feeder import getPositions, fileToLines
-from toolz.functoolz import compose
+from clamc_datafeed.feeder import getPositions
+from utils.excel import fileToLines
 from utils.utility import mergeDict
+from toolz.functoolz import compose
 from functools import partial
 import logging
 logger = logging.getLogger(__name__)
