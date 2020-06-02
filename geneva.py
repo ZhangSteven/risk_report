@@ -132,6 +132,12 @@ getGenevaBookCurrency = lambda position: \
 
 
 
+""" [Dictionary] position => [String] portfolio id of this position """
+getGenevaPortfolioId = lambda position: \
+	position['Portfolio']
+
+
+
 """
 	These are like utility functions, but they have to be deployed to 
 	each module, instead of being imported from one module. This is

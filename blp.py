@@ -167,6 +167,11 @@ getBlpPositionDate = lambda position: position['AsOfDate']
 
 
 
+""" [Dictionary] position => [String] portfolio id of the position """
+getBlpPortfolioId = lambda position: position['Account Code']
+
+
+
 """ [Dictionary] position => [String] Book currency of the position """
 getBlpBookCurrency = lambda position: \
 	getBookCurrency(position['Account Code'])

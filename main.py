@@ -8,7 +8,7 @@ from risk_report.utility import getCurrentDirectory
 from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
 							, getAverageRatingScore, getCountryCode, byCountryGroup \
-							, byAssetTypeFilterTuple, byCountryFilter
+							, byAssetTypeFilterTuple, byCountryFilter, countryNotApplicable
 from risk_report.geneva import readGenevaInvestmentPositionFile, isGenevaPosition \
 							, getGenevaMarketValue, getGenevaBookCurrency
 from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
@@ -219,7 +219,7 @@ def loadFXTableFromFile(file):
 
 	# FIXME: add implementation
 	"""
-	return {('USD', 'HKD'): 7.7520}	# FX rate as of 2020-04-30
+	return {('USD', 'HKD'): 7.7512}	# FX rate as of 2020-05-29
 
 
 
@@ -277,7 +277,7 @@ if __name__ == '__main__':
 
 	inputFile = join( getCurrentDirectory()
 					, 'samples'
-					, 'DIF_20200429_investment_position.xlsx'
+					, 'DIF_Investment_Positions_20200529.xlsx'
 					)
 
 	# Step 1. Create a file containing the (id, idtype) columns.
@@ -289,7 +289,7 @@ if __name__ == '__main__':
 	# Step 3. Check if all asset types can be determined.
 	blpDataFile = join( getCurrentDirectory()
 					  , 'samples'
-					  , 'DIF_20200429_BlpData.xlsx'
+					  , 'BlpData_DIF_20200529.xlsx'
 					  )
 
 	# compose(

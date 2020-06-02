@@ -3,7 +3,8 @@
 # Asset allocation logic for SFC
 # 
 from risk_report.lqa import getBlpIdnType, getGenevaIdnType
-from risk_report.geneva import isGenevaPosition
+from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId
+from risk_report.blp import getBlpPortfolioId
 from utils.excel import getRawPositions, fileToLines
 from utils.iter import pop, firstOf
 from utils.utility import mergeDict
@@ -111,6 +112,7 @@ def getAssetType(blpData, position):
 
 	
 	return \
+	getSpecialCaseAssetType(position) if isSpecialCase(position) else \
 	getPrivateSecurityAssetType(position) if isPrivateSecurity(position) else \
 	('Cash', ) if isCash(position) else \
 	('Foreign Exchange Derivatives', ) if isFxForward(position) else \
@@ -246,6 +248,22 @@ def getPrivateSecurityAssetType(position):
 
 
 
+getSpecialCaseAssetType = lambda position: \
+	loadAssetTypeSpecialCaseFromFile('AssetType_SpecialCase.xlsx')[getIdnType(position)[0]]['AssetType']
+
+
+def isSpecialCase(position):
+	portfolioMatched = lambda p1, p2: True if p2 == '' or p1 == p2 else False
+
+	return compose(
+		lambda t: t[0] in t[2] and portfolioMatched(t[1], t[2][t[0]]['Portfolio'])
+	  , lambda position: ( getIdnType(position)[0]
+	  					 , getPortfolioId(position)
+	  					 , loadAssetTypeSpecialCaseFromFile('AssetType_SpecialCase.xlsx')
+	  					 )
+	)(position)
+
+
 """
 	[Dictionary] position (a Geneva or Blp position)
 		=> [Tuple] (id, idType)
@@ -253,6 +271,16 @@ def getPrivateSecurityAssetType(position):
 getIdnType = lambda position: \
 	getGenevaIdnType(position) if isGenevaPosition(position) else \
 	getBlpIdnType(position)
+
+
+
+"""
+	[Dictionary] position (a Geneva or Blp position)
+		=> [String] portfolio Id
+"""
+getPortfolioId = lambda position: \
+	getGenevaPortfolioId(position) if isGenevaPosition(position) else \
+	getBlpPortfolioId(position)
 
 
 
