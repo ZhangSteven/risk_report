@@ -370,32 +370,12 @@ if __name__ == '__main__':
 	Step 6. Write a output csv with the country groups and asset types in the
 	SFC template file. Update that template file if necessary.
 	"""
-	# Do this to play around with different selection criteria.
-	# 
-	# compose(
-	# 	print
-	#   , lambda t: getTotalMarketValueFromCountrynAssetType(
-	#   				  t[1]
-	#   				, t[2]
-	#   				, 'USD'
-	#   			    , 'Asia - others (1)'
-	#   			    , 'Fixed Income'
-	#   			    , 'Corporate'
-	#   			    , 'Non-Investment Grade'
-	#   			    , 'Financial Institution'
-	#   			  )
-	#   , lambda inputFile, blpDataFile: \
-	#   		( *readGenevaInvestmentPositionFile(inputFile)
-	#   		, loadBlpDataFromFile(blpDataFile)
-	#   		)	
-	# )(inputFile, blpDataFile)
-
-
 	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
 	# compose(
 	# 	print
 	#   , lambda t: getTotalMarketValueFromAssetType(
-	#   				  t[1]
+	#   				  t[0]
+	#   				, t[1]
 	#   				, t[2]
 	#   				, 'USD'
 	#   			    , 'Cash'

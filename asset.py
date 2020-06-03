@@ -501,6 +501,7 @@ isFinancial = lambda blpData, position: \
 			=> [Bool] is SFC Authorized Fund
 """
 isSFCAuthorized = lambda blpData, position: \
+	True if getIdnType(position)[0] == '823 HK Equity' else \
 	True if blpData[getIdnType(position)[0]]['SFC_AUTHORIZED_FUND'] == 'Y' else False
 
 

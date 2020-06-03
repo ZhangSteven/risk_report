@@ -111,11 +111,10 @@ class TestGenevaAll(unittest2.TestCase):
 
 		# Now test different asset types
 		"""
-		The sum of Equity and Fund is 25,175,114.16, which is the same as the
-		Hong Kong equity sum. But Daphne's report has 8,350,682.52 China equity.
-		Why?
+		Note that "XS1684793018	POSABK V4.5 PERP" is treated as a special case 
+		in 19437, as Equity
 		"""
-		self.assertAlmostEqual( 23396037.80
+		self.assertAlmostEqual( 31746720.32
 							  , compose(
 							  		lambda x: x * FX
 							  	  , sum
@@ -124,6 +123,7 @@ class TestGenevaAll(unittest2.TestCase):
 							  	)(positions)
 							  , 2
 							  )
+
 
 		# 823 HK and 2823 HK
 		self.assertAlmostEqual( 1779076.37
@@ -143,62 +143,76 @@ class TestGenevaAll(unittest2.TestCase):
 		China Equity in the above. So that means some convertible bonds are
 		considered as Equity by Daphne.
 		"""
-		self.assertAlmostEqual( 20864616.15
-							  , compose(
-							  		lambda x: x * FX
-							  	  , sum
-							  	  , partial(map, getGenevaMarketValue)
-							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Additional Tier 1, Contingent Convertibles')
-							  	  , byCountryFilter(blpData, 'China - Mainland')
-							  	)(positions)
+		self.assertAlmostEqual( 12513933.62
+							  , getTotalMarketValueFromCountrynAssetType(
+									'20200429'
+								  , positions
+								  , blpData
+								  , 'USD'
+								  , 'China - Mainland'
+								  , 'Fixed Income'
+								  , 'Additional Tier 1, Contingent Convertibles'
+								)
 							  , 2
 							  )
 
 
 		self.assertAlmostEqual( 17208645.91
-							  , compose(
-							  		lambda x: x * FX
-							  	  , sum
-							  	  , partial(map, getGenevaMarketValue)
-							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Corporate', 'Investment Grade')
-							  	  , byCountryFilter(blpData, 'China - Hong Kong')
-							  	)(positions)
+							  , getTotalMarketValueFromCountrynAssetType(
+									'20200429'
+								  , positions
+								  , blpData
+								  , 'USD'
+								  , 'China - Hong Kong'
+								  , 'Fixed Income'
+								  , 'Corporate'
+								  , 'Investment Grade'
+								  , 'Financial Institution'
+								)
 							  , 2
 							  )
 
 
 		self.assertAlmostEqual( 5020919.30
-							  , compose(
-							  		lambda x: x * FX
-							  	  , sum
-							  	  , partial(map, getGenevaMarketValue)
-							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Corporate', 'Non-Investment Grade', 'Non-Financial')
-							  	  , byCountryFilter(blpData, 'China - Macau')
-							  	)(positions)
+							  , getTotalMarketValueFromCountrynAssetType(
+									'20200429'
+								  , positions
+								  , blpData
+								  , 'USD'
+								  , 'China - Macau'
+								  , 'Fixed Income'
+								  , 'Corporate'
+								  , 'Non-Investment Grade'
+								  , 'Non-Financial Institution'
+								)
 							  , 2
 							  )
 
 
 		self.assertAlmostEqual( 2029888.56
-							  , compose(
-							  		lambda x: x * FX
-							  	  , sum
-							  	  , partial(map, getGenevaMarketValue)
-							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Government / Municipal')
-							  	  , byCountryFilter(blpData, 'Asia - others (1)')
-							  	)(positions)
+							  , getTotalMarketValueFromCountrynAssetType(
+									'20200429'
+								  , positions
+								  , blpData
+								  , 'USD'
+								  , 'Asia - others (1)'
+								  , 'Fixed Income'
+								  , 'Government / Municipal'
+								)
 							  , 2
 							  )
 
 
-		self.assertAlmostEqual( 13607814.13 
-							  , compose(
-							  		lambda x: x * FX
-							  	  , sum
-							  	  , partial(map, getGenevaMarketValue)
-							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Corporate', 'Non-Investment Grade', 'Financial')
-							  	  , byCountryFilter(blpData, 'Asia - others (1)')
-							  	)(positions)
+		self.assertAlmostEqual( 26308960.40
+							  , getTotalMarketValueFromCountrynAssetType(
+									'20200429'
+								  , positions
+								  , blpData
+								  , 'USD'
+								  , 'Asia - others (1)'
+								  , 'Fixed Income'
+								  , 'Corporate'
+								)
 							  , 2
 							  )
 
@@ -206,12 +220,15 @@ class TestGenevaAll(unittest2.TestCase):
 		# Purposely made wrong, since there are no such thing as 
 		# 'Fixed Income', 'Government', 'Financial'
 		self.assertAlmostEqual( 0
-							  , compose(
-							  		lambda x: x * FX
-							  	  , sum
-							  	  , partial(map, getGenevaMarketValue)
-							  	  , byAssetTypeFilter(blpData, 'Fixed Income', 'Government / Municipal', 'Financial')
-							  	  , byCountryFilter(blpData, 'Asia - others (1)')
-							  	)(positions)
+							  , getTotalMarketValueFromCountrynAssetType(
+									'20200429'
+								  , positions
+								  , blpData
+								  , 'USD'
+								  , 'Asia - others (1)'
+								  , 'Fixed Income'
+								  , 'Government / Municipal'
+								  , 'Financial'
+								)
 							  , 2
 							  )

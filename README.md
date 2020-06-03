@@ -11,9 +11,7 @@ Purpose of this application:
 
 ## To Do
 
-1. Add asset special case file, containing asset type and country information for those private security, open ended fund and override security.
-
-2. Add test cases for the asset allocation with new funcitons, with the special case in (1).
+1. Add specal case file for 823 HK's SFC Authorized field?
 
 3. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
 
@@ -33,7 +31,7 @@ Purpose of this application:
 
 ## Know Issues
 
-
+1. REITs don't have the "SFC_AUTHORIZED_FUND" field, therefore used special case handling in isSFCAuthorized() function.
 
 
 ## Bloomberg Positions
