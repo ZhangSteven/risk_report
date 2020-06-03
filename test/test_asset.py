@@ -53,6 +53,13 @@ class TestAsset(unittest2.TestCase):
 		self.assertEqual( ('Fixed Income', 'Corporate')
 						, getAssetType(blpData, firstOf(isBondPosition, positions)))
 
+
+		# The bond: POSABK V4.5 PERP, the special case, treated as equity in 19437
+		isBondPosition2 = lambda x: x['InvestID'] == 'XS1684793018 Perfshs'
+		self.assertEqual( ('Equity', 'Listed equities')
+						, getAssetType(blpData, firstOf(isBondPosition2, positions)))
+
+
 		# The callable bond: BCHINA V3.6 PERP
 		isCallableBondPosition = lambda x: x['InvestID'] == 'XS2125922349'
 		self.assertEqual( ('Fixed Income', 'Additional Tier 1, Contingent Convertibles')
@@ -60,12 +67,12 @@ class TestAsset(unittest2.TestCase):
 
 		# The iShares A50 China ETF
 		isA50Fund = lambda x: x['InvestID'] == '2823 HK'
-		self.assertEqual( ('Fund', 'Exchange Traded Funds', 'SFC authorized')
+		self.assertEqual( ('Fund', 'Exchange Traded Funds')
 						, getAssetType(blpData, firstOf(isA50Fund, positions)))
 
 		# The LINK REIT
 		isREITFund = lambda x: x['InvestID'] == '823 HK'
-		self.assertEqual( ('Fund', 'Real Estate Investment Trusts', 'SFC authorized')
+		self.assertEqual( ('Fund', 'Real Estate Investment Trusts')
 						, getAssetType(blpData, firstOf(isREITFund, positions)))
 
 
@@ -89,8 +96,8 @@ class TestAsset(unittest2.TestCase):
 		  		map(lambda p: (getAssetType(blpData, p), p), positions)
 		)(blpData, positions)
 
-		# There are 155 bonds
-		self.assertEqual(155, len(securitiesWithRatings))
+		# There are 154 bonds (155 bonds, but one with special case override)
+		self.assertEqual(154, len(securitiesWithRatings))
 
 		# Has 3 credit ratings
 		self.assertEqual(11, firstOf( lambda t: t[1]['InvestID'] == 'XS2114413565'
@@ -112,11 +119,7 @@ class TestAsset(unittest2.TestCase):
 
 	def testLoadAssetTypeSpecialCaseFromFile(self):
 		d = loadAssetTypeSpecialCaseFromFile(join(getCurrentDirectory(), 'AssetType_SpecialCase.xlsx'))
-		self.assertEqual(3, len(d))
+		self.assertEqual(1, len(d))
 		p1 = d['XS1684793018']
 		self.assertEqual('19437', p1['Portfolio'])
 		self.assertEqual(('Equity', 'Listed equities'), p1['AssetType'])
-		
-		p2 = d['823 HK Equity']
-		self.assertEqual('', p2['Portfolio'])
-		self.assertEqual(('Fund', 'Real Estate Investment Trusts', 'SFC authorized'), p2['AssetType'])

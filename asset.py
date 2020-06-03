@@ -3,8 +3,11 @@
 # Asset allocation logic for SFC
 # 
 from risk_report.lqa import getBlpIdnType, getGenevaIdnType
-from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId
-from risk_report.blp import getBlpPortfolioId
+from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId, getGenevaFundType \
+							, isGenevaFund, isGenevaFxForward, isGenevaCash \
+							, isGenevaRepo, isGenevaMoneyMarket, isGenevaPrivateSecurity
+from risk_report.blp import getBlpPortfolioId, getBlpFundType, isBlpFund, isBlpFxForward \
+							, isBlpCash, isBlpRepo, isBlpMoneyMarket, isBlpPrivateSecurity
 from utils.excel import getRawPositions, fileToLines
 from utils.iter import pop, firstOf
 from utils.utility import mergeDict
@@ -14,15 +17,6 @@ from itertools import filterfalse, takewhile
 import logging
 logger = logging.getLogger(__name__)
 
-
-
-"""
-	[Dictionary] blpData, [String] countryCode, [Iterator] positions
-		=> [Bool] is position's country Code matches the countryCode passed in
-"""
-# fromCountry = lambda blpData, countryCode, position: \
-# 	countryCode == getCountry(blpData, position)
-	
 
 
 def byCountryGroup(blpData, countryGroup, positions):
@@ -40,9 +34,6 @@ def byCountryGroup(blpData, countryGroup, positions):
 	)
 
 
-	# matchCountryGroup = lambda blpData, countryGroup, position: \
-	# 	toCountryGroup(blpData, position).lower() == countryGroup.lower()
-
 	matchCountryGroup = lambda blpData, countryGroup, position: \
 		countryGroup.lower().startswith(toCountryGroup(blpData, position).lower())
 
@@ -53,37 +44,32 @@ def byCountryGroup(blpData, countryGroup, positions):
 
 
 isPrivateSecurity = lambda position: \
-	False if isGenevaPosition(position) else position['Name'].startswith('.') 
+	isGenevaPrivateSecurity(position) if isGenevaPosition(position) else isBlpPrivateSecurity(position)
 
 
 
 isCash = lambda position: \
-	position['SortKey'] == 'Cash and Equivalents' if isGenevaPosition(position) \
-	else position['Asset Type'] == 'Cash'
+	isGenevaCash(position) if isGenevaPosition(position) else isBlpCash(position)
 
 
 
 isMoneyMarket = lambda position: \
-	position['SortKey'] == 'Fixed Deposit' if isGenevaPosition(position) \
-	else position['Asset Type'] == 'Money Market'
+	isGenevaMoneyMarket(position) if isGenevaPosition(position) else isBlpMoneyMarket(position) 
 
 
 
 isRepo = lambda position: \
-	False if isGenevaPosition(position) \
-	else position['Asset Type'] == 'Repo Liability'
+	isGenevaRepo(position) if isGenevaPosition(position) else isBlpRepo(position)
 
 
 
 isFxForward = lambda position: \
-	position['SortKey'] == 'FX Forward' if isGenevaPosition(position) \
-	else position['Asset Type'] == 'Foreign Exchange Forward'
+	isGenevaFxForward(position) if isGenevaPosition(position) else isBlpFxForward(position)
 
 
 
 isFund = lambda position: \
-	position['SortKey'] in ['Open-End Fund', 'Exchange Trade Fund', 'Real Estate Investment Trust'] \
-	if isGenevaPosition(position) else position['Industry Sector'] == 'Funds'
+	isGenevaFund(position) if isGenevaPosition(position) else isBlpFund(position)
 
 
 
@@ -97,18 +83,7 @@ def getAssetType(blpData, position):
 	"""
 	logger.debug('getAssetType(): {0}'.format(getIdnType(position)))
 
-	getFundType = lambda position: \
-		getGenevaFundType(position) if isGenevaPosition(position) else \
-		getBlpFundType(position)
 
-
-	# NOTE: Geneva does not book repo yet
-	isRepo = lambda position: \
-		False if isGenevaPosition(position) else position['Asset Type'].startswith('Repo')
-
-	# FIXME: add implementation
-	getRepoAssetType = lambda position: \
-		lognRaise('getRepoAssetType(): not supported')
 
 	
 	return \
@@ -121,6 +96,18 @@ def getAssetType(blpData, position):
 	getFundType(position) if isFund(position) else \
 	getOtherAssetType(blpData, position)
 # End of getAssetType()
+
+
+
+getFundType = lambda position: \
+	getGenevaFundType(position) if isGenevaPosition(position) else \
+	getBlpFundType(position)
+
+
+
+# FIXME: add implementation
+getRepoAssetType = lambda position: \
+	lognRaise('getRepoAssetType(): not supported')
 
 
 
@@ -188,54 +175,6 @@ def getOtherAssetType(blpData, position):
 
 
 
-def getBlpFundType(position):
-	"""
-	[Dictionary] position => [Tuple] Asset Class
-
-	If position is a fund type in Bloomberg, output its exact fund type
-	"""
-	# FIXME: Add implementation
-	lognRaise('getBlpFundType(): {0}'.format(getIdnType(position)))
-
-
-
-def getGenevaFundType(position):
-	"""
-	[Dictionary] position => [Tuple] Asset Class
-
-	If position is a fund type in Geneva, output its exact fund type
-	"""
-	# def getGenevaOpenFundType(position):
-	# 	# FIXME: Add mapping for open end fund here, what's the fund type
-	# 	# for DIF?
-	# 	# fMap = {'CLFLDIF HK': ('Fund', 'Other Funds')}
-	# 	fMap = {}
-	# 	try:
-	# 		return fMap[position['InvestID']]
-	# 	except KeyError:
-	# 		lognRaise('getGenevaOpenFundType(): invalid position: {0}'.format(getIdnType(position)))
-
-
-	# return \
-	# ('Fund', 'Exchange Traded Funds') if position['SortKey'] == 'Exchange Trade Fund' else \
-	# ('Fund', 'Real Estate Investment Trusts') if position['SortKey'] == 'Real Estate Investment Trust' else \
-	# getGenevaOpenFundType(position) if position['SortKey'] == 'Open-End Fund' else \
-	# lognRaise('getGenevaFundType(): invalid position: {0}'.format(getIdnType(position)))
-
-	"""
-	For fund types, we use case by case handling. Because there is no way to tell
-	whether a fund is SFC authorized or not.
-	"""
-	fMap = { '823 HK' : ('Fund', 'Real Estate Investment Trusts', 'SFC authorized')
-		   , '2823 HK': ('Fund', 'Exchange Traded Funds', 'SFC authorized')
-		   }
-
-	return \
-	fMap[position['InvestID']] if position['InvestID'] in fMap else \
-	lognRaise('getGenevaFundType(): not supported: {0}'.format(getIdnType(position)))
-
-
-
 def getPrivateSecurityAssetType(position):
 	"""
 	[Dictionary] position => [Tuple] Asset Type
@@ -248,11 +187,18 @@ def getPrivateSecurityAssetType(position):
 
 
 
+""" [Dictionary] position => [Tuple] asset type """
 getSpecialCaseAssetType = lambda position: \
 	loadAssetTypeSpecialCaseFromFile('AssetType_SpecialCase.xlsx')[getIdnType(position)[0]]['AssetType']
 
 
+
 def isSpecialCase(position):
+	"""
+	[Dictionary] position => [Bool] is this a special case in asset type,
+								private security, open ended fund or something
+								that needs override.
+	"""
 	portfolioMatched = lambda p1, p2: True if p2 == '' or p1 == p2 else False
 
 	return compose(
@@ -550,6 +496,15 @@ isFinancial = lambda blpData, position: \
 
 
 
+""" 
+	[Dictionary] blpData, [Dictionary] position
+			=> [Bool] is SFC Authorized Fund
+"""
+isSFCAuthorized = lambda blpData, position: \
+	True if blpData[getIdnType(position)[0]]['SFC_AUTHORIZED_FUND'] == 'Y' else False
+
+
+
 """
 	[Dictionary] blpData, [Dictionary] position 
 		=> [Bool] does country apply to this position
@@ -597,6 +552,8 @@ def byAssetTypeFilterTuple(blpData, assetTypeStringTuple):
 	, 'non-investment grade': partial(filterfalse, partial(isInvestmentGrade, blpData))
 	, 'financial': partial(filter, partial(isFinancial, blpData))
 	, 'non-financial': partial(filterfalse, partial(isFinancial, blpData))
+	, 'sfc authorized': partial(filter, partial(isSFCAuthorized, blpData))
+	, 'non-sfc authorized': partial(filterfalse, partial(isSFCAuthorized, blpData))
 	}
 
 	getFilter = compose(
@@ -607,14 +564,6 @@ def byAssetTypeFilterTuple(blpData, assetTypeStringTuple):
 	  						   )
 	)
 
-
-	# return \
-	# partial(filter, lambda _: True) if len(assetTypeStringTuple) == 0 else \
-	# compose( attributeFilter[assetTypeStringTuple[-1].lower()]
-	# 	   , byAssetTypeFilterTuple(blpData, assetTypeStringTuple[0:-1])
-	# 	   ) \
-	# if assetTypeStringTuple[-1].lower() in attributeFilter else \
-	# byAssetTypeOnlyFilterTuple(blpData, assetTypeStringTuple)
 
 	return \
 	partial(filter, lambda _: True) if len(assetTypeStringTuple) == 0 else \

@@ -109,8 +109,45 @@ def saveGenevaPositionToDB(file):
 
 
 """ [Dictionary] position => [Bool] is it a Geneva position """
-isGenevaPosition = lambda p: \
-	p['Remarks1'].lower().startswith('geneva')
+isGenevaPosition = lambda position: \
+	position['Remarks1'].lower().startswith('geneva')
+
+
+
+""" [Dictionary] position => [Bool] is it a Geneva fund position """
+isGenevaFund = lambda position: \
+	position['SortKey'] in ['Open-End Fund', 'Exchange Trade Fund', 'Real Estate Investment Trust']
+
+
+
+""" [Dictionary] position => [Bool] is it a Geneva FX Forward position """
+isGenevaFxForward = lambda position: \
+	position['SortKey'] == 'FX Forward'
+
+
+
+""" [Dictionary] position => [Bool] is it a Geneva Repo position """
+isGenevaRepo = lambda position: False	# REPO not implemented in Geneva yet
+
+
+
+""" [Dictionary] position => [Bool] is it a Geneva Money Market position """
+isGenevaMoneyMarket = lambda position: \
+	position['SortKey'] == 'Fixed Deposit'
+
+
+
+""" [Dictionary] position => [Bool] is it a cash or cash equivalent Geneva position """
+isGenevaCash = lambda position: \
+	position['SortKey'] == 'Cash and Equivalents'
+
+
+
+""" 
+	[Dictionary] position => [Bool] is it a private security 
+# FIXME: to be implemented
+"""
+isGenevaPrivateSecurity = lambda position: False
 
 
 
@@ -135,6 +172,23 @@ getGenevaBookCurrency = lambda position: \
 """ [Dictionary] position => [String] portfolio id of this position """
 getGenevaPortfolioId = lambda position: \
 	position['Portfolio']
+
+
+
+def getGenevaFundType(position):
+	"""
+	[Dictionary] position => [Tuple] Asset Class
+	"""
+
+	# For open ended fund types, we use special case handling here.
+	fMap = {  }
+
+
+	return \
+	('Fund', 'Exchange Traded Funds') if position['SortKey'] == 'Exchange Trade Fund' else \
+	('Fund', 'Real Estate Investment Trusts') if position['SortKey'] == 'Real Estate Investment Trust' else \
+	fMap[position['InvestID']] if position['InvestID'] in fMap else \
+	lognRaise('getGenevaFundType(): not supported: {0}'.format(getIdnType(position)))
 
 
 

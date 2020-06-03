@@ -13,12 +13,13 @@ from risk_report.geneva import readGenevaInvestmentPositionFile, isGenevaPositio
 							, getGenevaMarketValue, getGenevaBookCurrency
 from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
 from risk_report.sfc import readSfcTemplate
-from utils.excel import getRawPositions, fileToLines
+from utils.excel import getRawPositionsFromFile, fileToLines
 from utils.iter import pop
-from utils.utility import writeCsv
+from utils.utility import writeCsv, mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose, juxt
-from functools import partial
-from itertools import filterfalse, chain
+from functools import partial, lru_cache
+from itertools import filterfalse, chain, takewhile
+from datetime import datetime
 from os.path import join
 import logging
 logger = logging.getLogger(__name__)
@@ -33,8 +34,7 @@ logger = logging.getLogger(__name__)
 loadBlpDataFromFile = compose(
 	dict
   , partial(map, lambda p: (p['ID'], p))
-  , getRawPositions
-  , fileToLines
+  , getRawPositionsFromFile
 )
 
 
@@ -132,21 +132,23 @@ getBookCurrency = lambda position: \
 """ [Dictionary] position, [String] reportingCurrency
 		=> [Float] market value in reporting currency
 """
-marketValueInReportingCurrency = lambda reportingCurrency, position: \
-	getMarketValue(position) / getFXRate(reportingCurrency, getBookCurrency(position))
+marketValueWithFX = lambda FX, position: \
+	getMarketValue(position) / FX[getBookCurrency(position)]
 
 
 
-def getTotalMarketValueFromCountrynAssetType( positions
+def getTotalMarketValueFromCountrynAssetType( date
+											, positions
 											, blpData
 											, reportingCurrency
 											, countryGroup
 											, *assetTypeStrings):
 	"""
-	[Iterator] positions
-	[Dictionary] blpData
-	[String] reporting currency, 
-	[String] countryGroup, 
+	[String] date (yyyymmdd),
+	[Iterator] positions,
+	[Dictionary] blpData,
+	[String] reporting currency,
+	[String] countryGroup,
 	[String] tier 1 asset type,
 	[String] tier 2 asset type, 
 	...
@@ -170,18 +172,23 @@ def getTotalMarketValueFromCountrynAssetType( positions
 	return \
 	compose(
 		sum
-	  , partial(map, partial(marketValueInReportingCurrency, reportingCurrency))
+	  , partial( map
+	  		   , partial( marketValueWithFX
+	  		   			, loadFXTableFromFile(date, reportingCurrency))
+	  		   )
 	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
 	  , byCountryFilter(blpData, countryGroup)
 	)(positions)
 
 
 
-def getTotalMarketValueFromAssetType( positions
+def getTotalMarketValueFromAssetType( date
+									, positions
 									, blpData
 									, reportingCurrency
 									, *assetTypeStrings):
 	"""
+	[String] date (yyyymmdd),
 	[Iterator] positions
 	[Dictionary] blpData
 	[String] reporting currency, 
@@ -194,38 +201,50 @@ def getTotalMarketValueFromAssetType( positions
 	return \
 	compose(
 		sum
-	  , partial(map, partial(marketValueInReportingCurrency, reportingCurrency))
+	  , partial( map
+	  		   , partial( marketValueWithFX
+	  		   			, loadFXTableFromFile(date, reportingCurrency))
+	  		   )
 	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
 	)(positions)
 
 
 
-def getFXRate(c1, c2):
+@lru_cache(maxsize=3)
+def loadFXTableFromFile(date, targetCurrency):
 	"""
-	[String] c1 (currency), [String] c2 (currency)
-		=> [Float] exchange rate to convert 1 unit of c1 to c2
+	[String] date (yyyymmdd),
+	[String] targetCurrency
+		=> [Dictionary] currency -> exchange rate
 
-	For example, getFXRate('USD', 'HKD') = 7.8120
+	Exchange rate: to get 1 unit of target currency, how many units of another 
+	currency is needed.
 
-	# FIXME: another parameter, date, is needed because FX rates change over time.
+	For example, d = loadFXTableFromFile('20200430', 'USD')
+
+	Then
+
+	d['HKD'] = 7.7520 (USDHKD as of 20200430)
 	"""
-	return loadFXTableFromFile('FXRate.xlsx')[(c1, c2)]
+	toDateString = lambda x: \
+		datetime.strftime(fromExcelOrdinal(x), '%Y%m%d')
+
+
+	return \
+	compose(
+		partial(mergeDict, {targetCurrency: 1.0})
+	  , dict
+	  , partial(map, lambda p: (p['Currency'], p['FX']))
+	  , partial( filter
+	  		   , lambda p: toDateString(p['Date']) == date and p['Reporting Currency'] == targetCurrency
+	  		   )
+	)(getRawPositionsFromFile('FX.xlsx'))
 
 
 
-def loadFXTableFromFile(file):
+def writeAssetAllocationCsv(date, positions, blpData, reportingCurrency, countries, assetTypes):
 	"""
-	[String] fx rate file => [Dictionary] (c1, c2) -> exchange rate
-
-	# FIXME: add implementation
-	"""
-	return {('USD', 'HKD'): 7.7512}	# FX rate as of 2020-05-29
-
-
-
-def writeAssetAllocationCsv(date, positions, blpData, countries, assetTypes):
-	"""
-	[String] date,
+	[String] date (yyyymmdd),
 	[Iterator] positions,
 	[Dictionary] blpData,
 	[List] countries, (e.g., ['China - Hong Kong', 'China - Mainland', 'Singapore'])
@@ -242,7 +261,7 @@ def writeAssetAllocationCsv(date, positions, blpData, countries, assetTypes):
 		map(lambda el: (el, ) + assetType, countries)
 
 	assetTypeWithCountryToMarketValue = lambda positions, blpData, t: \
-		getTotalMarketValueFromCountrynAssetType(positions, blpData, 'USD', *t)
+		getTotalMarketValueFromCountrynAssetType(date, positions, blpData, reportingCurrency, *t)
 
 	assetTypeLineToValues = lambda positions, blpData, line: \
 		map( partial(assetTypeWithCountryToMarketValue, positions, blpData)
@@ -391,7 +410,7 @@ if __name__ == '__main__':
 	sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
 	compose(
 		print
-	  , lambda t: writeAssetAllocationCsv(t[0], t[1], t[2], t[3], t[4])
+	  , lambda t: writeAssetAllocationCsv(t[0], t[1], t[2], 'USD', t[3], t[4])
 	  , lambda inputFile, blpDataFile, sfcAssetAllocationTemplate: \
 	  		( *readGenevaInvestmentPositionFile(inputFile)
 	  		, loadBlpDataFromFile(blpDataFile)

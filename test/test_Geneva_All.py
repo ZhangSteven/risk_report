@@ -21,7 +21,6 @@ class TestGenevaAll(unittest2.TestCase):
 		super(TestGenevaAll, self).__init__(*args, **kwargs)
 
 
-
 	def testSum(self):
 		inputFile = join( getCurrentDirectory()
 						, 'samples'

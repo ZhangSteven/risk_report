@@ -147,8 +147,46 @@ def readBlpFile(file):
 
 
 
+""" [Dictionary] position => [Bool] is this a Bloomberg position """
 isBlpPosition = lambda position: \
 	position['Remarks1'].startswith('Bloomberg')
+
+
+
+""" [Dictionary] position => [Bool] is this a Bloomberg fund position """
+isBlpFund = lambda position: \
+	position['Industry Sector'] == 'Funds'
+
+
+
+""" [Dictionary] position => [Bool] is this a Bloomberg FX Forward position """
+isBlpFxForward = lambda position: \
+	position['Asset Type'] == 'Foreign Exchange Forward'
+
+
+
+""" [Dictionary] position => [Bool] is this a Bloomberg Cash position """
+isBlpCash = lambda position: \
+	position['Asset Type'] == 'Cash'
+
+
+
+""" [Dictionary] position => [Bool] is this a Bloomberg Money Market position """
+isBlpMoneyMarket = lambda position: \
+	position['Asset Type'] == 'Money Market'
+
+
+
+""" [Dictionary] position => [Bool] is this a Bloomberg Repo position """
+isBlpRepo = lambda position: \
+	position['Asset Type'].startswith('Repo')
+
+
+
+""" [Dictionary] position => [Bool] is this a Bloomberg private security position """
+isBlpPrivateSecurity = lambda position: \
+	position['Name'].startswith('.') 
+
 
 
 
@@ -185,6 +223,17 @@ getBlpBookCurrency = lambda position: \
 """
 getBookCurrency = lambda accountCode: \
 	lognRaise('getBookCurrency(): not implemented')
+
+
+
+def getBlpFundType(position):
+	"""
+	[Dictionary] position => [Tuple] Asset Class
+
+	If position is a fund type in Bloomberg, output its exact fund type
+	"""
+	# FIXME: Add implementation
+	lognRaise('getBlpFundType(): {0}'.format(getIdnType(position)))
 
 
 
