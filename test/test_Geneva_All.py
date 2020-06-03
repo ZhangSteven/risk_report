@@ -113,8 +113,11 @@ class TestGenevaAll(unittest2.TestCase):
 		"""
 		Note that "XS1684793018	POSABK V4.5 PERP" is treated as a special case 
 		in 19437, as Equity
+
+		823 HK is also a special case, treated as listed equities instead of
+		REITs.
 		"""
-		self.assertAlmostEqual( 31746720.32
+		self.assertAlmostEqual( 32572726.51
 							  , compose(
 							  		lambda x: x * FX
 							  	  , sum
@@ -125,8 +128,8 @@ class TestGenevaAll(unittest2.TestCase):
 							  )
 
 
-		# 823 HK and 2823 HK
-		self.assertAlmostEqual( 1779076.37
+		# 2823 HK
+		self.assertAlmostEqual( 953070.18
 							  , compose(
 							  		lambda x: x * FX
 							  	  , sum
@@ -137,12 +140,25 @@ class TestGenevaAll(unittest2.TestCase):
 							  )
 
 
-		"""
-		For China, 'Fixed Income', 'Additional Tier 1, Contingent Convertibles'
-		Daphne's number is 12,513,933.62 , the delta is 8,350,682.53, which is
-		China Equity in the above. So that means some convertible bonds are
-		considered as Equity by Daphne.
-		"""
+
+	def testSum2(self):
+		inputFile = join( getCurrentDirectory()
+						, 'samples'
+						, 'DIF_20200429_investment_position.xlsx'
+						)
+
+		blpDataFile = join( getCurrentDirectory()
+						  , 'samples'
+						  , 'DIF_20200429_BlpData.xlsx'
+						  )
+		
+		blpData = loadBlpDataFromFile(blpDataFile)
+		positions = compose(
+			lambda t: list(t[1])
+		  , readGenevaInvestmentPositionFile
+		)(inputFile)
+
+
 		self.assertAlmostEqual( 12513933.62
 							  , getTotalMarketValueFromCountrynAssetType(
 									'20200429'

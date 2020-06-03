@@ -78,6 +78,59 @@ def argumentsAsTuple(func):
 
 
 
+def buildLqaRequestFromFilesCombined(blpFile, genevaFile, writer):
+	"""
+	[String] blpFile, [String] genevaFile, [Function] writer
+		=> [String] combined master list csv file
+
+	Where "writer" is an output function that takes name, date and positions
+	and write to an output file.
+
+	Side effect: create one LQA request file with all positions combined
+	"""
+
+	"""
+		[String] file 
+			=> ( [String] date (yyyy-mm-dd)
+			   , [Iterable] clo
+			   , [Iterable] nonCLO
+			   )
+	"""
+	processBlpFile = compose(
+		lambda t: (t[0], *getBlpLqaPositions(t[1]))
+	  , readBlpFile
+	)
+
+
+	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
+	processGenevaFile = compose(
+		lambda t: (t[0], getGenevaLqaPositions(t[1]))
+	  , readGenevaInvestmentPositionFile
+	)
+
+
+	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
+		writer( 'masterlist_combined'
+			  , dt
+			  , consolidate(chain(clo, nonCLO, genevaPositions))
+			)
+
+
+	checkDate = lambda d1, clo, nonCLO, d2, genevaPositions: \
+  		lognRaise('inconsistent dates: {0}, {1}'.format(d1, d2)) \
+  		if d1 != d2 else (d1, clo, nonCLO, genevaPositions)
+
+
+	return compose(
+		argumentsAsTuple(processDatenPosition)  
+	  , argumentsAsTuple(checkDate)
+	  , lambda blpFile, genevaFile: ( *processBlpFile(blpFile)
+	  								, *processGenevaFile(genevaFile)
+	  								)
+	)(blpFile, genevaFile)
+
+
+
 def buildLqaRequestFromFiles(blpFile, genevaFile, writer):
 	"""
 	[String] blpFile, [String] genevaFile, [Function] writer
@@ -441,6 +494,8 @@ if __name__ == '__main__':
 				   	   , help='Geneva investment positions report')
 	args = parser.parse_args()
 
-	# buildLqaRequestFromFiles(args.blp_file, args.geneva_file, buildLqaRequestOldStyle)
+	buildLqaRequestFromFiles(args.blp_file, args.geneva_file, buildLqaRequestOldStyle)
 
-	buildLqaRequestFromFiles(args.blp_file, args.geneva_file, buildLqaRequest)
+	# buildLqaRequestFromFiles(args.blp_file, args.geneva_file, buildLqaRequest)
+
+	# buildLqaRequestFromFilesCombined(args.blp_file, args.geneva_file, buildLqaRequestOldStyle)

@@ -70,9 +70,9 @@ class TestAsset(unittest2.TestCase):
 		self.assertEqual( ('Fund', 'Exchange Traded Funds')
 						, getAssetType(blpData, firstOf(isA50Fund, positions)))
 
-		# The LINK REIT
+		# The LINK REIT (823 HK is treated as special case)
 		isREITFund = lambda x: x['InvestID'] == '823 HK'
-		self.assertEqual( ('Fund', 'Real Estate Investment Trusts')
+		self.assertEqual( ('Equity', 'Listed equities')
 						, getAssetType(blpData, firstOf(isREITFund, positions)))
 
 
@@ -119,7 +119,7 @@ class TestAsset(unittest2.TestCase):
 
 	def testLoadAssetTypeSpecialCaseFromFile(self):
 		d = loadAssetTypeSpecialCaseFromFile(join(getCurrentDirectory(), 'AssetType_SpecialCase.xlsx'))
-		self.assertEqual(1, len(d))
+		self.assertEqual(3, len(d))
 		p1 = d['XS1684793018']
 		self.assertEqual('19437', p1['Portfolio'])
 		self.assertEqual(('Equity', 'Listed equities'), p1['AssetType'])

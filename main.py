@@ -371,29 +371,29 @@ if __name__ == '__main__':
 	SFC template file. Update that template file if necessary.
 	"""
 	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
-	# compose(
-	# 	print
-	#   , lambda t: getTotalMarketValueFromAssetType(
-	#   				  t[0]
-	#   				, t[1]
-	#   				, t[2]
-	#   				, 'USD'
-	#   			    , 'Cash'
-	#   			  )
-	#   , lambda inputFile, blpDataFile: \
-	#   		( *readGenevaInvestmentPositionFile(inputFile)
-	#   		, loadBlpDataFromFile(blpDataFile)
-	#   		)	
-	# )(inputFile, blpDataFile)
-
-
-	sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
 	compose(
 		print
-	  , lambda t: writeAssetAllocationCsv(t[0], t[1], t[2], 'USD', t[3], t[4])
-	  , lambda inputFile, blpDataFile, sfcAssetAllocationTemplate: \
+	  , lambda t: getTotalMarketValueFromAssetType(
+	  				  t[0]
+	  				, t[1]
+	  				, t[2]
+	  				, 'USD'
+	  			    , 'Cash'
+	  			  )
+	  , lambda inputFile, blpDataFile: \
 	  		( *readGenevaInvestmentPositionFile(inputFile)
 	  		, loadBlpDataFromFile(blpDataFile)
-	  		, *readSfcTemplate(sfcAssetAllocationTemplate)
-	  		)
-	)(inputFile, blpDataFile, sfcAssetAllocationTemplate)
+	  		)	
+	)(inputFile, blpDataFile)
+
+
+	# sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
+	# compose(
+	# 	print
+	#   , lambda t: writeAssetAllocationCsv(t[0], t[1], t[2], 'USD', t[3], t[4])
+	#   , lambda inputFile, blpDataFile, sfcAssetAllocationTemplate: \
+	#   		( *readGenevaInvestmentPositionFile(inputFile)
+	#   		, loadBlpDataFromFile(blpDataFile)
+	#   		, *readSfcTemplate(sfcAssetAllocationTemplate)
+	#   		)
+	# )(inputFile, blpDataFile, sfcAssetAllocationTemplate)
