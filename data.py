@@ -94,7 +94,7 @@ def getGenevaPositions(portfolio, date, mode):
 	"""
 	getGenevaInvestmentPositionFile = lambda portfolio, date, mode: \
 		join( getInputDirectory(mode)
-			, portfolio + '_investment_positions_' + date + '.xlsx'
+			, portfolio + '_Investment_Positions_' + date + '.xlsx'
 			)
 
 

@@ -12,11 +12,11 @@ from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 from risk_report.geneva import isGenevaPosition, getGenevaMarketValue, getGenevaBookCurrency
 from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
 from risk_report.sfc import readSfcTemplate
-from risk_report.data import getFX
+from risk_report.data import getFX, getPortfolioPositions, getBlpData
 from utils.iter import pop
 from utils.utility import writeCsv, mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose, juxt
-from functools import partial, lru_cache
+from functools import partial
 from itertools import filterfalse, chain, takewhile
 from datetime import datetime
 from os.path import join
@@ -50,19 +50,6 @@ def writeIdnTypeToFile(file, positions):
 
 
 
-"""
-	[String] inputFile (geneva investment positions report, Excel Format) 
-		=> [Int] 0 if successful
-
-	Side Effect: create an output csv file
-"""
-# createGenevaIdnTypeFile = compose(
-# 	lambda t: writeIdnTypeToFile('geneva_' + t[0] + '_idntype.csv', t[1])
-#   , readGenevaInvestmentPositionFile
-# )
-
-
-
 # [Tuple] assetType => [Bool] is credit rating applicable
 ratingsApplicable = lambda assetType: \
 	len(assetType) > 1 and \
@@ -86,10 +73,10 @@ def getFISecuritiesWoRatings(blpData, positions):
 
 
 	compose(
-		lambda L: list(map( lambda p: getAverageRatingScore(blpData, p, accumulate)
-						  , L))
-	  , lambda blpData, positions: filter(partial(needsRating, blpData), positions)
-	)(blpData, positions)
+		list
+	  , partial(map, lambda p: getAverageRatingScore(blpData, p, accumulate))
+	  , partial(filter, partial(needsRating, blpData))
+	)(positions)
 
 
 	return missing
@@ -248,34 +235,32 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	inputFile = join( getCurrentDirectory()
-					, 'samples'
-					, 'DIF_Investment_Positions_20200529.xlsx'
-					)
+	date = '20200529'
+	portfolio = '19437'
 
 	# Step 1. Create a file containing the (id, idtype) columns.
-	# createGenevaIdnTypeFile(inputFile)
-
-	# Step 2. Use the BlpData_Template.xlsx to load Bloomberg data and save
-	# the result to "blpDataFile".
-
-	# Step 3. Check if all asset types can be determined.
-	blpDataFile = join( getCurrentDirectory()
-					  , 'samples'
-					  , 'BlpData_DIF_20200529.xlsx'
-					  )
-
 	# compose(
 	# 	print
-	#   , lambda t: writeCsv( 'geneva_assetType_' + t[0] + '.csv'
-	# 					  , map(partial(getAssetType, t[2]), t[1]) 
-	# 					  )
-	#   , lambda inputFile, blpDataFile: \
-	#   		( *readGenevaInvestmentPositionFile(inputFile)
-	#   		, loadBlpDataFromFile(blpDataFile)
-	#   		)
-	# )(inputFile, blpDataFile)
+	#   , lambda positions: \
+	# 		writeIdnTypeToFile('geneva_' + date + '_idntype.csv', positions)
+	#   , getPortfolioPositions
+	# )(portfolio, date)
 
+
+	# Step 2. Use the BlpData_Template.xlsx to load Bloomberg data and save
+	# the result. In the case of using file as datastore, the blp file name
+	# needs to follow the naming convention defined in data.py
+
+
+	# Step 3. Check if all asset types can be determined.
+	# compose(
+	# 	print
+	#   , lambda positions: writeCsv( 'geneva_assetType_' + date + '.csv'
+	# 					  		  , map( partial(getAssetType, getBlpData(date))
+	# 					  		  	   , positions) 
+	# 					  		  )
+	#   , getPortfolioPositions
+	# )(portfolio, date)
 
 
 	"""
@@ -286,18 +271,15 @@ if __name__ == '__main__':
 	"""
 	# compose(
 	# 	print
-	#   , lambda t: 'All FI securities have at least one credit rating' if len(t[1]) == 0 else \
-	#   			  writeCsv( 'MissingCreditRating_' + t[0] + '.csv'
-	# 					  , chain([('Id', 'IdType')], t[1])
-	# 					  )
-	#   , lambda t: (t[0], getFISecuritiesWoRatings(t[2], t[1]))
-	#   , lambda inputFile, blpDataFile: \
-	#   		( *readGenevaInvestmentPositionFile(inputFile)
-	#   		, loadBlpDataFromFile(blpDataFile)
-	#   		)	
-	# )(inputFile, blpDataFile)
+	#   , lambda positions: \
+	#   		'All FI securities have at least one credit rating' if len(positions) == 0 else \
+	#   		writeCsv( 'MissingCreditRating_' + date + '.csv'
+	# 				, chain([('Id', 'IdType')], positions)
+	# 				)
+	#   , partial(getFISecuritiesWoRatings, getBlpData(date))
+	#   , getPortfolioPositions
+	# )(portfolio, date)
 	
-
 
 	"""
 	Step 5. Check if all securities except cash and FX forwards can get
@@ -305,19 +287,14 @@ if __name__ == '__main__':
 	"""
 	# compose(
 	# 	print
-	#   , lambda t: writeCsv( 'countries_' + t[0] + '.csv'
-	# 					  , chain([('Country Code', )], map(lambda s: [s], t[1]))
-	# 					  )
-	#   , lambda t: ( t[0]
-	#   			  , map( partial(getCountryCode, t[2])
-	#   			  	   , filterfalse(partial(countryNotApplicable, t[2]), t[1])
-	#   			  	   )
-	#   			  )
-	#   , lambda inputFile, blpDataFile: \
-	#   		( *readGenevaInvestmentPositionFile(inputFile)
-	#   		, loadBlpDataFromFile(blpDataFile)
-	#   		)	
-	# )(inputFile, blpDataFile)
+	#   , lambda positions: writeCsv( 'countries_' + date + '.csv'
+	# 					  		  , chain( [('Country Code', )]
+	# 					  		  		 , map(lambda s: [s], positions))
+	# 					  		  )
+	#   , partial(map, partial(getCountryCode, getBlpData(date)))
+	#   , partial(filterfalse, partial(countryNotApplicable, getBlpData(date)))
+	#   , getPortfolioPositions
+	# )(portfolio, date)
 
 
 	"""
@@ -327,27 +304,20 @@ if __name__ == '__main__':
 	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
 	# compose(
 	# 	print
-	#   , lambda t: getTotalMarketValueFromAssetType(
-	#   				  t[0]
-	#   				, t[1]
-	#   				, t[2]
-	#   				, 'USD'
-	#   			    , 'Cash'
-	#   			  )
-	#   , lambda inputFile, blpDataFile: \
-	#   		( *readGenevaInvestmentPositionFile(inputFile)
-	#   		, loadBlpDataFromFile(blpDataFile)
-	#   		)	
-	# )(inputFile, blpDataFile)
+	#   , lambda positions: \
+	#   		getTotalMarketValueFromAssetType( date, positions, getBlpData(date)
+	#   										, 'USD', 'Cash')
+	#   , getPortfolioPositions
+	# )(portfolio, date)
 
 
-	# sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'
-	# compose(
-	# 	print
-	#   , lambda t: writeAssetAllocationCsv(t[0], t[1], t[2], 'USD', t[3], t[4])
-	#   , lambda inputFile, blpDataFile, sfcAssetAllocationTemplate: \
-	#   		( *readGenevaInvestmentPositionFile(inputFile)
-	#   		, loadBlpDataFromFile(blpDataFile)
-	#   		, *readSfcTemplate(sfcAssetAllocationTemplate)
-	#   		)
-	# )(inputFile, blpDataFile, sfcAssetAllocationTemplate)
+	compose(
+		print
+	  , lambda positions: writeAssetAllocationCsv( date
+	  											 , positions
+	  											 , getBlpData(date)
+	  											 , 'USD'
+	  											 , *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	  											 )
+	  , getPortfolioPositions
+	)(portfolio, date)

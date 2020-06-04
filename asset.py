@@ -9,7 +9,6 @@ from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId, getGeneva
 from risk_report.blp import getBlpPortfolioId, getBlpFundType, isBlpFund, isBlpFxForward \
 							, isBlpCash, isBlpRepo, isBlpMoneyMarket, isBlpPrivateSecurity
 from risk_report.data import getRatingScoreMapping, getCountryMapping, getAssetTypeSpecialCaseData
-from utils.excel import getRawPositions, fileToLines
 from utils.iter import pop, firstOf
 from utils.utility import mergeDict
 from toolz.functoolz import compose
