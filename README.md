@@ -11,13 +11,15 @@ Purpose of this application:
 
 ## To Do
 
-1. Add specal case file for 823 HK's SFC Authorized field?
+1. Refactor code, move things like isGenevaPosition, isCash, to data.py, including LQA.
+
+2. Add test case for consolicated positions after merging BLP and Geneva positions, LQA part.
 
 3. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
 
 4. Consider using Geneva as the asset type provider?
 
-5. Add test case for consolicated positions after merging BLP and Geneva positions.
+
 
 
 ## Note

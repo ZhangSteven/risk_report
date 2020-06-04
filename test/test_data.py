@@ -54,6 +54,7 @@ class TestGeneva(unittest2.TestCase):
 
 
 	def testGetPortfolioPositions(self):
+		# Test Geneva positions
 		positions = list(getPortfolioPositions('19437', '20200429', 'test'))
 		self.assertEqual(192, len(positions))
 		self.verifyInvestmentPosition(positions[3])
@@ -61,12 +62,13 @@ class TestGeneva(unittest2.TestCase):
 
 
 	def testGetPortfolioPositions2(self):
+		# Test Bloomberg positions
 		positions = compose(
 			list
 		  , partial(filterfalse, isGenevaPosition)
 		)(getPortfolioPositions('ALL', '20200131', 'test'))
 		self.assertEqual(97, len(positions))
-
+		self.verifyBlpPosition(positions[2])
 
 
 	# def verifyBondPosition(self, p):
@@ -117,3 +119,8 @@ class TestGeneva(unittest2.TestCase):
 		self.assertEqual('1299 HK', p['InvestID'])
 		self.assertAlmostEqual(71.95, p['LocalPrice'])
 		self.assertEqual(12749540, p['MarketValueBook'])
+
+
+
+	def verifyBlpPosition(self, p):
+		pass
