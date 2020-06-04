@@ -9,11 +9,10 @@ from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
 							, getAverageRatingScore, getCountryCode, byCountryGroup \
 							, byAssetTypeFilterTuple, byCountryFilter, countryNotApplicable
-from risk_report.geneva import readGenevaInvestmentPositionFile, isGenevaPosition \
-							, getGenevaMarketValue, getGenevaBookCurrency
+from risk_report.geneva import isGenevaPosition, getGenevaMarketValue, getGenevaBookCurrency
 from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
 from risk_report.sfc import readSfcTemplate
-from utils.excel import getRawPositionsFromFile, fileToLines
+from risk_report.data import getFX
 from utils.iter import pop
 from utils.utility import writeCsv, mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose, juxt
@@ -23,19 +22,6 @@ from datetime import datetime
 from os.path import join
 import logging
 logger = logging.getLogger(__name__)
-
-
-
-"""
-	[String] file => [Dictionary] data (ID -> [Dictioanry] blp information)
-	
-	Assume Blp data is stored in an Excel file
-"""
-loadBlpDataFromFile = compose(
-	dict
-  , partial(map, lambda p: (p['ID'], p))
-  , getRawPositionsFromFile
-)
 
 
 
@@ -70,10 +56,10 @@ def writeIdnTypeToFile(file, positions):
 
 	Side Effect: create an output csv file
 """
-createGenevaIdnTypeFile = compose(
-	lambda t: writeIdnTypeToFile('geneva_' + t[0] + '_idntype.csv', t[1])
-  , readGenevaInvestmentPositionFile
-)
+# createGenevaIdnTypeFile = compose(
+# 	lambda t: writeIdnTypeToFile('geneva_' + t[0] + '_idntype.csv', t[1])
+#   , readGenevaInvestmentPositionFile
+# )
 
 
 
@@ -174,7 +160,7 @@ def getTotalMarketValueFromCountrynAssetType( date
 		sum
 	  , partial( map
 	  		   , partial( marketValueWithFX
-	  		   			, loadFXTableFromFile(date, reportingCurrency))
+	  		   			, getFX(date, reportingCurrency))
 	  		   )
 	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
 	  , byCountryFilter(blpData, countryGroup)
@@ -203,42 +189,10 @@ def getTotalMarketValueFromAssetType( date
 		sum
 	  , partial( map
 	  		   , partial( marketValueWithFX
-	  		   			, loadFXTableFromFile(date, reportingCurrency))
+	  		   			, getFX(date, reportingCurrency))
 	  		   )
 	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
 	)(positions)
-
-
-
-@lru_cache(maxsize=3)
-def loadFXTableFromFile(date, targetCurrency):
-	"""
-	[String] date (yyyymmdd),
-	[String] targetCurrency
-		=> [Dictionary] currency -> exchange rate
-
-	Exchange rate: to get 1 unit of target currency, how many units of another 
-	currency is needed.
-
-	For example, d = loadFXTableFromFile('20200430', 'USD')
-
-	Then
-
-	d['HKD'] = 7.7520 (USDHKD as of 20200430)
-	"""
-	toDateString = lambda x: \
-		datetime.strftime(fromExcelOrdinal(x), '%Y%m%d')
-
-
-	return \
-	compose(
-		partial(mergeDict, {targetCurrency: 1.0})
-	  , dict
-	  , partial(map, lambda p: (p['Currency'], p['FX']))
-	  , partial( filter
-	  		   , lambda p: toDateString(p['Date']) == date and p['Reporting Currency'] == targetCurrency
-	  		   )
-	)(getRawPositionsFromFile('FX.xlsx'))
 
 
 
@@ -371,20 +325,20 @@ if __name__ == '__main__':
 	SFC template file. Update that template file if necessary.
 	"""
 	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
-	compose(
-		print
-	  , lambda t: getTotalMarketValueFromAssetType(
-	  				  t[0]
-	  				, t[1]
-	  				, t[2]
-	  				, 'USD'
-	  			    , 'Cash'
-	  			  )
-	  , lambda inputFile, blpDataFile: \
-	  		( *readGenevaInvestmentPositionFile(inputFile)
-	  		, loadBlpDataFromFile(blpDataFile)
-	  		)	
-	)(inputFile, blpDataFile)
+	# compose(
+	# 	print
+	#   , lambda t: getTotalMarketValueFromAssetType(
+	#   				  t[0]
+	#   				, t[1]
+	#   				, t[2]
+	#   				, 'USD'
+	#   			    , 'Cash'
+	#   			  )
+	#   , lambda inputFile, blpDataFile: \
+	#   		( *readGenevaInvestmentPositionFile(inputFile)
+	#   		, loadBlpDataFromFile(blpDataFile)
+	#   		)	
+	# )(inputFile, blpDataFile)
 
 
 	# sfcAssetAllocationTemplate = 'SFC_Asset_Allocation_Template.xlsx'

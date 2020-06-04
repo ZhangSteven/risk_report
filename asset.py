@@ -8,6 +8,7 @@ from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId, getGeneva
 							, isGenevaRepo, isGenevaMoneyMarket, isGenevaPrivateSecurity
 from risk_report.blp import getBlpPortfolioId, getBlpFundType, isBlpFund, isBlpFxForward \
 							, isBlpCash, isBlpRepo, isBlpMoneyMarket, isBlpPrivateSecurity
+from risk_report.data import getRatingScoreMapping, getCountryMapping, getAssetTypeSpecialCaseData
 from utils.excel import getRawPositions, fileToLines
 from utils.iter import pop, firstOf
 from utils.utility import mergeDict
@@ -27,8 +28,7 @@ def byCountryGroup(blpData, countryGroup, positions):
 	# [Dictionary] blpData, [Dictionary] position => [String] country code
 	toCountryGroup = compose(
 		lambda code: \
-			loadCountryGroupMappingFromFile('SFC_Country.xlsx')[code] \
-			if code in loadCountryGroupMappingFromFile('SFC_Country.xlsx') else \
+			getCountryMapping()[code] if code in getCountryMapping() else \
 			lognRaise('toCountryGroup(): unsupported country code: {0}'.format(code))
 	  , getCountryCode
 	)
@@ -189,7 +189,7 @@ def getPrivateSecurityAssetType(position):
 
 """ [Dictionary] position => [Tuple] asset type """
 getSpecialCaseAssetType = lambda position: \
-	loadAssetTypeSpecialCaseFromFile('AssetType_SpecialCase.xlsx')[getIdnType(position)[0]]['AssetType']
+	getAssetTypeSpecialCaseData()[getIdnType(position)[0]]['AssetType']
 
 
 
@@ -205,9 +205,10 @@ def isSpecialCase(position):
 		lambda t: t[0] in t[2] and portfolioMatched(t[1], t[2][t[0]]['Portfolio'])
 	  , lambda position: ( getIdnType(position)[0]
 	  					 , getPortfolioId(position)
-	  					 , loadAssetTypeSpecialCaseFromFile('AssetType_SpecialCase.xlsx')
+	  					 , getAssetTypeSpecialCaseData()
 	  					 )
 	)(position)
+
 
 
 """
@@ -404,76 +405,7 @@ getRatingScores = lambda blpData, position: \
 	[String] agency, [String] rating => [Float] rating score
 """
 getRatingScore = lambda agency, rating: \
-	0 if rating.startswith('#N/A') else \
-	loadRatingScoreMappingFromFile('RatingScore.xlsx')[(agency, rating)]
-
-
-
-@lru_cache(maxsize=32)
-def loadRatingScoreMappingFromFile(file):
-	"""
-	[String] rating score mapping file 
-		=> [Dictionary] (agency, rating string) -> rating score
-	"""
-	return \
-	compose(
-		dict
-	  , partial(map, lambda line: ((line[0], line[1]), line[2]))
-	  , partial(takewhile, lambda line: len(line) > 2 and line[0] != '')
-	  , lambda t: t[1]
-	  , lambda lines: (pop(lines), lines)
-	  , fileToLines
-	)(file)
-
-
-
-@lru_cache(maxsize=32)
-def loadCountryGroupMappingFromFile(file):
-	"""
-	[String] file => [Dictionary] country code -> country group
-	"""
-	return \
-	compose(
-		dict
-	  , partial(map, lambda line: (line[0], line[2].strip()))
-	  , partial(takewhile, lambda line: len(line) > 2 and line[0] != '')
-	  , lambda t: t[1]
-	  , lambda lines: (pop(lines), lines)
-	  , fileToLines
-	)(file)
-
-
-
-@lru_cache(maxsize=32)
-def loadAssetTypeSpecialCaseFromFile(file):
-	"""
-	[String] file => [Dictionary] ID -> [Dictionary] security info
-	"""
-	stringToTuple = compose(
-		tuple
-	  , partial(map, lambda s: s.strip())
-	  , lambda s: s.split(',')
-	)
-
-
-	updatePosition = lambda position: mergeDict(
-		position
-	  , { 'Portfolio': str(int(position['Portfolio'])) \
-	  					if isinstance(position['Portfolio'], float) \
-	  					else position['Portfolio']
-	  	, 'AssetType': stringToTuple(position['AssetType'])
-	  	}
-	)
-
-
-	return \
-	compose(
-		dict
-	  , partial(map, lambda p: (p['ID'], p))
-	  , partial(map, updatePosition)
-	  , getRawPositions
-	  , fileToLines
-	)(file)
+	0 if rating.startswith('#N/A') else getRatingScoreMapping()[(agency, rating)]
 
 
 

@@ -3,10 +3,10 @@
 
 import unittest2
 from risk_report.asset import byCountryFilter, byAssetTypeFilter
-from risk_report.geneva import readGenevaInvestmentPositionFile \
-							, getGenevaMarketValue
-from risk_report.main import loadBlpDataFromFile, getTotalMarketValueFromAssetType \
+from risk_report.geneva import getGenevaMarketValue
+from risk_report.main import getTotalMarketValueFromAssetType \
 							, getTotalMarketValueFromCountrynAssetType
+from risk_report.data import getPortfolioPositions, getBlpData, getFX
 from risk_report.utility import getCurrentDirectory
 from toolz.functoolz import compose
 from functools import partial
@@ -21,30 +21,17 @@ class TestGenevaAll(unittest2.TestCase):
 		super(TestGenevaAll, self).__init__(*args, **kwargs)
 
 
+
 	def testSum(self):
-		inputFile = join( getCurrentDirectory()
-						, 'samples'
-						, 'DIF_20200429_investment_position.xlsx'
-						)
-
-		blpDataFile = join( getCurrentDirectory()
-						  , 'samples'
-						  , 'DIF_20200429_BlpData.xlsx'
-						  )
-		
-		FX = 1/7.7520	# USD FX as of 2020-04-30
-		blpData = loadBlpDataFromFile(blpDataFile)
-		positions = compose(
-			lambda t: list(t[1])
-		  , readGenevaInvestmentPositionFile
-		)(inputFile)
-
+		FX = getFX('20200429', 'USD')['HKD']
+		blpData = getBlpData('20200429', 'test')
+		positions = list(getPortfolioPositions('19437', '20200429', 'test'))
 
 		
 		# Now we test by different country groups
 		self.assertAlmostEqual( 394165723.69
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byCountryFilter(blpData, 'China - Mainland')
@@ -55,7 +42,7 @@ class TestGenevaAll(unittest2.TestCase):
 
 		self.assertAlmostEqual( 46753980.08
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byCountryFilter(blpData, 'China - Hong Kong')
@@ -66,7 +53,7 @@ class TestGenevaAll(unittest2.TestCase):
 
 		self.assertAlmostEqual( 10019205.48
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byCountryFilter(blpData, 'China - Macau')
@@ -77,7 +64,7 @@ class TestGenevaAll(unittest2.TestCase):
 
 		self.assertAlmostEqual( 15742145.41
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byCountryFilter(blpData, 'Singapore')
@@ -88,7 +75,7 @@ class TestGenevaAll(unittest2.TestCase):
 
 		self.assertAlmostEqual( 1419901.34
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byCountryFilter(blpData, 'America - others (1)')
@@ -100,7 +87,7 @@ class TestGenevaAll(unittest2.TestCase):
 		# Purposedly made wrong, since there are no "XXX" country.
 		self.assertAlmostEqual( 0
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byCountryFilter(blpData, 'XXX')
@@ -119,7 +106,7 @@ class TestGenevaAll(unittest2.TestCase):
 		"""
 		self.assertAlmostEqual( 32572726.51
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byAssetTypeFilter(blpData, 'Equity')
@@ -131,7 +118,7 @@ class TestGenevaAll(unittest2.TestCase):
 		# 2823 HK
 		self.assertAlmostEqual( 953070.18
 							  , compose(
-							  		lambda x: x * FX
+							  		lambda x: x / FX
 							  	  , sum
 							  	  , partial(map, getGenevaMarketValue)
 							  	  , byAssetTypeFilter(blpData, 'Fund')
@@ -142,22 +129,8 @@ class TestGenevaAll(unittest2.TestCase):
 
 
 	def testSum2(self):
-		inputFile = join( getCurrentDirectory()
-						, 'samples'
-						, 'DIF_20200429_investment_position.xlsx'
-						)
-
-		blpDataFile = join( getCurrentDirectory()
-						  , 'samples'
-						  , 'DIF_20200429_BlpData.xlsx'
-						  )
-		
-		blpData = loadBlpDataFromFile(blpDataFile)
-		positions = compose(
-			lambda t: list(t[1])
-		  , readGenevaInvestmentPositionFile
-		)(inputFile)
-
+		blpData = getBlpData('20200429', 'test')
+		positions = list(getPortfolioPositions('19437', '20200429', 'test'))
 
 		self.assertAlmostEqual( 12513933.62
 							  , getTotalMarketValueFromCountrynAssetType(

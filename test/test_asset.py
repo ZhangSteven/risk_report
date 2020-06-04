@@ -4,7 +4,7 @@
 import unittest2
 from risk_report.utility import getCurrentDirectory
 from risk_report.asset import getAssetType, getAverageRatingScore, isInvestmentGrade \
-							, getIdnType, loadAssetTypeSpecialCaseFromFile
+							, getIdnType
 from risk_report.geneva import readGenevaInvestmentPositionFile
 from risk_report.main import loadBlpDataFromFile, ratingsApplicable
 from itertools import filterfalse
@@ -114,12 +114,3 @@ class TestAsset(unittest2.TestCase):
 		# Has no credit ratings
 		self.assertEqual(0, firstOf( lambda t: t[1]['InvestID'] == 'XS2021226985'
 									, securitiesWithRatings)[0])
-
-
-
-	def testLoadAssetTypeSpecialCaseFromFile(self):
-		d = loadAssetTypeSpecialCaseFromFile(join(getCurrentDirectory(), 'AssetType_SpecialCase.xlsx'))
-		self.assertEqual(3, len(d))
-		p1 = d['XS1684793018']
-		self.assertEqual('19437', p1['Portfolio'])
-		self.assertEqual(('Equity', 'Listed equities'), p1['AssetType'])

@@ -2,8 +2,9 @@
 #
 # Build the .req file to generate Bloomberg liquidity report.
 # 
-
-from os.path import dirname, abspath
+import configparser
+from os.path import dirname, abspath, join
+from functools import lru_cache
 
 
 
@@ -16,3 +17,22 @@ from os.path import dirname, abspath
 """
 getCurrentDirectory = lambda: \
 	dirname(abspath(__file__))
+
+
+
+@lru_cache(maxsize=3)
+def loadConfigFile(file):
+	"""
+	Read the config file, convert it to a config object.
+	"""
+	cfg = configparser.ConfigParser()
+	cfg.read(join(getCurrentDirectory(), file))
+	return cfg
+
+
+
+def getInputDirectory(mode):
+	if mode == 'test':
+		return loadConfigFile('risk_report.config')['Test']['inputDirectory']
+	else:
+		return loadConfigFile('risk_report.config')['Production']['inputDirectory']

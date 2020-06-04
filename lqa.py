@@ -6,8 +6,7 @@
 # 2) Read LQA response
 # 
 
-from risk_report.blp import readBlpFile
-from risk_report.geneva import readGenevaInvestmentPositionFile
+from risk_report.data import getPortfolioPositions
 from utils.excel import fileToLines
 from utils.iter import pop
 from functools import partial, reduce
@@ -78,113 +77,113 @@ def argumentsAsTuple(func):
 
 
 
-def buildLqaRequestFromFilesCombined(blpFile, genevaFile, writer):
-	"""
-	[String] blpFile, [String] genevaFile, [Function] writer
-		=> [String] combined master list csv file
+# def buildLqaRequestFromFilesCombined(portfolioGroup, date, writer):
+# 	"""
+# 	[String] portfolioGroup, [String] date (yyyymmdd), [Function] writer
+# 		=> [String] combined master list csv file
 
-	Where "writer" is an output function that takes name, date and positions
-	and write to an output file.
+# 	Where "writer" is an output function that takes name, date and positions
+# 	and write to an output file.
 
-	Side effect: create one LQA request file with all positions combined
-	"""
+# 	Side effect: create one LQA request file with all positions combined
+# 	"""
 
-	"""
-		[String] file 
-			=> ( [String] date (yyyy-mm-dd)
-			   , [Iterable] clo
-			   , [Iterable] nonCLO
-			   )
-	"""
-	processBlpFile = compose(
-		lambda t: (t[0], *getBlpLqaPositions(t[1]))
-	  , readBlpFile
-	)
-
-
-	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
-	processGenevaFile = compose(
-		lambda t: (t[0], getGenevaLqaPositions(t[1]))
-	  , readGenevaInvestmentPositionFile
-	)
+# 	"""
+# 		[String] file 
+# 			=> ( [String] date (yyyy-mm-dd)
+# 			   , [Iterable] clo
+# 			   , [Iterable] nonCLO
+# 			   )
+# 	"""
+# 	processBlpFile = compose(
+# 		lambda t: (t[0], *getBlpLqaPositions(t[1]))
+# 	  , readBlpFile
+# 	)
 
 
-	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
-		writer( 'masterlist_combined'
-			  , dt
-			  , consolidate(chain(clo, nonCLO, genevaPositions))
-			)
+# 	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
+# 	processGenevaFile = compose(
+# 		lambda t: (t[0], getGenevaLqaPositions(t[1]))
+# 	  , readGenevaInvestmentPositionFile
+# 	)
 
 
-	checkDate = lambda d1, clo, nonCLO, d2, genevaPositions: \
-  		lognRaise('inconsistent dates: {0}, {1}'.format(d1, d2)) \
-  		if d1 != d2 else (d1, clo, nonCLO, genevaPositions)
+# 	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
+# 		writer( 'masterlist_combined'
+# 			  , dt
+# 			  , consolidate(chain(clo, nonCLO, genevaPositions))
+# 			)
 
 
-	return compose(
-		argumentsAsTuple(processDatenPosition)  
-	  , argumentsAsTuple(checkDate)
-	  , lambda blpFile, genevaFile: ( *processBlpFile(blpFile)
-	  								, *processGenevaFile(genevaFile)
-	  								)
-	)(blpFile, genevaFile)
+# 	checkDate = lambda d1, clo, nonCLO, d2, genevaPositions: \
+#   		lognRaise('inconsistent dates: {0}, {1}'.format(d1, d2)) \
+#   		if d1 != d2 else (d1, clo, nonCLO, genevaPositions)
+
+
+# 	return compose(
+# 		argumentsAsTuple(processDatenPosition)  
+# 	  , argumentsAsTuple(checkDate)
+# 	  , lambda blpFile, genevaFile: ( *processBlpFile(blpFile)
+# 	  								, *processGenevaFile(genevaFile)
+# 	  								)
+# 	)(blpFile, genevaFile)
 
 
 
-def buildLqaRequestFromFiles(blpFile, genevaFile, writer):
-	"""
-	[String] blpFile, [String] genevaFile, [Function] writer
-		=> ( [String] master list CLO csv file
-		   , [STring] master list non-CLO csv file
-		   )
+# def buildLqaRequestFromFiles(blpFile, genevaFile, writer):
+# 	"""
+# 	[String] blpFile, [String] genevaFile, [Function] writer
+# 		=> ( [String] master list CLO csv file
+# 		   , [STring] master list non-CLO csv file
+# 		   )
 
-	Where "writer" is an output function that takes name, date and positions
-	and write to an output file.
+# 	Where "writer" is an output function that takes name, date and positions
+# 	and write to an output file.
 
-	Side effect: create 2 LQA request files
-	"""
+# 	Side effect: create 2 LQA request files
+# 	"""
 
-	"""
-		[String] file 
-			=> ( [String] date (yyyy-mm-dd)
-			   , [Iterable] clo
-			   , [Iterable] nonCLO
-			   )
-	"""
-	processBlpFile = compose(
-		lambda t: (t[0], *getBlpLqaPositions(t[1]))
-	  , readBlpFile
-	)
-
-
-	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
-	processGenevaFile = compose(
-		lambda t: (t[0], getGenevaLqaPositions(t[1]))
-	  , readGenevaInvestmentPositionFile
-	)
+# 	"""
+# 		[String] file 
+# 			=> ( [String] date (yyyy-mm-dd)
+# 			   , [Iterable] clo
+# 			   , [Iterable] nonCLO
+# 			   )
+# 	"""
+# 	processBlpFile = compose(
+# 		lambda t: (t[0], *getBlpLqaPositions(t[1]))
+# 	  , readBlpFile
+# 	)
 
 
-	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
-		( writer( 'masterlist_nonCLO'
-				, dt
-				, consolidate(chain(nonCLO, genevaPositions))
-				)
-		, writer('masterlist_CLO', dt, consolidate(clo))
-		)
+# 	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
+# 	processGenevaFile = compose(
+# 		lambda t: (t[0], getGenevaLqaPositions(t[1]))
+# 	  , readGenevaInvestmentPositionFile
+# 	)
 
 
-	checkDate = lambda d1, clo, nonCLO, d2, genevaPositions: \
-  		lognRaise('inconsistent dates: {0}, {1}'.format(d1, d2)) \
-  		if d1 != d2 else (d1, clo, nonCLO, genevaPositions)
+# 	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
+# 		( writer( 'masterlist_nonCLO'
+# 				, dt
+# 				, consolidate(chain(nonCLO, genevaPositions))
+# 				)
+# 		, writer('masterlist_CLO', dt, consolidate(clo))
+# 		)
 
 
-	return compose(
-		argumentsAsTuple(processDatenPosition)  
-	  , argumentsAsTuple(checkDate)
-	  , lambda blpFile, genevaFile: ( *processBlpFile(blpFile)
-	  								, *processGenevaFile(genevaFile)
-	  								)
-	)(blpFile, genevaFile)
+# 	checkDate = lambda d1, clo, nonCLO, d2, genevaPositions: \
+#   		lognRaise('inconsistent dates: {0}, {1}'.format(d1, d2)) \
+#   		if d1 != d2 else (d1, clo, nonCLO, genevaPositions)
+
+
+# 	return compose(
+# 		argumentsAsTuple(processDatenPosition)  
+# 	  , argumentsAsTuple(checkDate)
+# 	  , lambda blpFile, genevaFile: ( *processBlpFile(blpFile)
+# 	  								, *processGenevaFile(genevaFile)
+# 	  								)
+# 	)(blpFile, genevaFile)
 
 
 
