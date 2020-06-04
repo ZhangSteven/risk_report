@@ -3,13 +3,15 @@
 # Functions related to data retrieving are grouped here.
 # 
 from risk_report.utility import getInputDirectory
+from risk_report.blp import getBlpPortfolioId
+from risk_report.geneva import getGenevaPortfolioId
 from clamc_datafeed.feeder import getPositions
 from utils.excel import getRawPositions, fileToLines, getRawPositionsFromFile
 from utils.iter import pop, firstOf
 from utils.utility import mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose
 from functools import partial, lru_cache
-from itertools import filterfalse, takewhile
+from itertools import filterfalse, takewhile, dropwhile, chain
 from datetime import datetime
 from os.path import join
 import logging
@@ -37,6 +39,97 @@ getBlpData = lambda date, mode='production': \
 
 
 """
+	[String] portfolio, [String] date (yyyymmdd), [String] mode
+		=> [Iterator] positions of the portfolio 
+"""
+getPortfolioPositions = lambda portfolio, date, mode='production': \
+	getAllPositions(date, mode) if portfolio.lower() == 'all' else \
+	getGenevaPositions(portfolio, date, mode) if portfolio == '19437' else \
+	getBlpPositions(portfolio, date, mode)
+
+
+
+getBlpPositions = lambda portfolio, date, mode: \
+	filter( lambda p: getBlpPortfolioId(p) == portfolio
+		  , getAllPositionsBlp(date, mode))
+
+
+
+def getAllPositions(date, mode='production'):
+	"""
+	[String] date (yyyymmdd), [String] mode
+		=> [Iterator] positions of all portfolios on the date
+
+	At the moment, we load DIF (19437) positions from Geneva and other
+	portfolios from Bloomberg.
+	"""
+	return \
+	chain(
+		getGenevaPositions('19437', date, mode)
+	  , filterfalse( lambda p: getBlpPortfolioId(p).startswith('19437')
+	  			   , getAllPositionsBlp(date, mode)
+	  			   )
+	)
+
+
+
+def getAllPositionsBlp(date, mode):
+	"""
+	[String] date (yyyymmdd), [String] mode
+		=> [Iterator] positions of all portfolios on the date from Bloomberg
+	"""
+	getBlpPositionFile = lambda date, mode: \
+		join(getInputDirectory(mode), 'risk_m2_mav_' + date + '.xlsx')
+
+
+	# [Iterable] lines => [List] line that contains the date
+	findDateLine = partial(
+		firstOf
+	  , lambda line: len(line) > 1 and line[1].startswith('Risk-Mon Steven')
+	)
+
+
+	# [String] The string containing date => [String] date (yyyymmdd)
+	# it looks like: Risk Report LQA Master as of 20200429
+	getDateFromString = lambda s: s.split()[-1]
+
+
+	getDateFromLines = compose(
+		getDateFromString
+	  , lambda line: lognRaise('Failed to find date line') if line == None else line[1]
+	  , findDateLine
+	)
+
+
+	addNewFields = lambda date, position: \
+		mergeDict( position
+				 , { 'AsOfDate': date
+				   , 'Remarks1': 'Bloomberg MAV Risk-Mon Steven'
+				   }
+				 )
+
+
+	getPositions = lambda date, lines: \
+	compose(
+		partial(map, partial(addNewFields, date))
+	  , partial(filterfalse, lambda p: p['Account Code'] == '')
+	  , getRawPositions
+	  , lambda lines: dropwhile(lambda line: line[0] != 'Name', lines)
+	)(lines)
+
+
+	return \
+	compose(
+		lambda t: getPositions(t[0], t[1])
+	  , lambda lines: (getDateFromLines(lines), lines)
+	  , fileToLines
+	  , lambda file: lognContinue('getAllPositionsBlp(): {0}'.format(file), file)
+	  , getBlpPositionFile
+	)(date, mode)
+
+
+
+"""
 	[String] file => [Dictionary] data (ID -> [Dictioanry] blp information)
 """
 loadBlpDataFromFile = compose(
@@ -49,21 +142,6 @@ loadBlpDataFromFile = compose(
 
 getBlpDataFile = lambda date, mode: \
 	join(getInputDirectory(mode), 'BlpData_' + date + '.xlsx')
-
-
-
-"""
-	[String] portfolio, [String] date (yyyymmdd), [String] mode
-		=> [Iterator] positions of the portfolio 
-"""
-getPortfolioPositions = lambda portfolio, date, mode='production': \
-	getGenevaPositions(portfolio, date, mode) if portfolio == '19437' else \
-	getBlpPositions(portfolio, date, mode)
-
-
-
-getBlpPositions = lambda portfolio, date, mode: \
-	lognRaise('getBlpPositions(): not implemented')
 
 
 

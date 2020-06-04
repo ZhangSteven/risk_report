@@ -24,15 +24,6 @@ class TestBlp(unittest2.TestCase):
 
 
 
-	def testReadBlpFile(self):
-		inputFile = join(getCurrentDirectory(), 'samples', 'risk_m2_sample.xlsx')
-		date, positions = readBlpFile(inputFile)
-		positions = list(positions)
-		self.assertEqual('20200429', date)
-		self.assertEqual(107, len(positions))
-
-
-
 	def testReadLqaPositionsFromFile(self):
 		inputFile = join(getCurrentDirectory(), 'samples', 'risk_m2_sample.xlsx')
 		readLqaPositionsFromFile = compose(
@@ -49,6 +40,7 @@ class TestBlp(unittest2.TestCase):
 		self.verifyCLOPosition(findByName('AEGON 5 ½ 04/11/48', clo))
 		self.verifyNonCLOPosition(findByName('CHINSC 8 ¾ 01/15/21', nonCLO))
 		self.verifyEquityPosition(findByName('1038 HK', nonCLO))
+
 
 
 	def verifyCLOPosition(self, p):

@@ -78,64 +78,48 @@ def argumentsAsTuple(func):
 
 
 
-# def buildLqaRequestFromFilesCombined(portfolioGroup, date, writer):
-# 	"""
-# 	[String] portfolioGroup, [String] date (yyyymmdd), [Function] writer
-# 		=> [String] combined master list csv file
+def doLqaRequestCombined(portfolio, date, writer):
+	"""
+	[String] portfolio, [String] date (yyyymmdd), [Function] writer
+		=> [String] master list csv file (all positios combined)
 
-# 	Where "writer" is an output function that takes name, date and positions
-# 	and write to an output file.
+	Where "writer" is an output function that takes name, date and positions
+	and write to an output file.
 
-# 	Side effect: create one LQA request file with all positions combined
-# 	"""
-
-# 	"""
-# 		[String] file 
-# 			=> ( [String] date (yyyy-mm-dd)
-# 			   , [Iterable] clo
-# 			   , [Iterable] nonCLO
-# 			   )
-# 	"""
-# 	processBlpFile = compose(
-# 		lambda t: (t[0], *getBlpLqaPositions(t[1]))
-# 	  , readBlpFile
-# 	)
+	Side effect: create one LQA request files
+	"""
+	processGenevaPositions = compose(
+		getGenevaLqaPositions
+	  , partial(filter, isGenevaPosition)
+	)
 
 
-# 	"""[String] file => ([String] date (yyyy-mm-dd), [Iterable] positions)"""
-# 	processGenevaFile = compose(
-# 		lambda t: (t[0], getGenevaLqaPositions(t[1]))
-# 	  , readGenevaInvestmentPositionFile
-# 	)
+	processBlpPositions = compose(
+		getBlpLqaPositions
+	  , partial(filterfalse, isGenevaPosition)
+	)
 
 
-# 	processDatenPosition = lambda dt, clo, nonCLO, genevaPositions: \
-# 		writer( 'masterlist_combined'
-# 			  , dt
-# 			  , consolidate(chain(clo, nonCLO, genevaPositions))
-# 			)
+	return compose(
+		lambda t: writer( 'masterlist'
+						, date
+						, consolidate(chain(t[0], t[1], t[2]))
+						)
 
-
-# 	checkDate = lambda d1, clo, nonCLO, d2, genevaPositions: \
-#   		lognRaise('inconsistent dates: {0}, {1}'.format(d1, d2)) \
-#   		if d1 != d2 else (d1, clo, nonCLO, genevaPositions)
-
-
-# 	return compose(
-# 		argumentsAsTuple(processDatenPosition)  
-# 	  , argumentsAsTuple(checkDate)
-# 	  , lambda blpFile, genevaFile: ( *processBlpFile(blpFile)
-# 	  								, *processGenevaFile(genevaFile)
-# 	  								)
-# 	)(blpFile, genevaFile)
+	  , lambda positions: ( *processBlpPositions(positions)
+						  , processGenevaPositions(positions)
+						  )
+	  , list
+	  , getPortfolioPositions
+	)(portfolio, date)
 
 
 
 def doLqaRequest(portfolio, date, writer):
 	"""
 	[String] portfolio, [String] date (yyyymmdd), [Function] writer
-		=> ( [String] master list CLO csv file
-		   , [STring] master list non-CLO csv file
+		=> ( [STring] master list non-CLO csv file
+		   , [String] master list CLO csv file
 		   )
 
 	Where "writer" is an output function that takes name, date and positions
@@ -269,9 +253,7 @@ def getBlpLqaPositions(positions):
 	Return (CLO positions, nonCLO positions)
 	"""
 	removeUnwantedPositions = compose(
-		partial(filterfalse, lambda p: p['Account Code'][:5] == '19437')
-
-	  , partial( filterfalse
+		partial( filterfalse
 	  		   , lambda p: p['Asset Type'] in [ 'Cash', 'Foreign Exchange Forward'
 	  		   								  , 'Repo Liability', 'Money Market'] \
 					or p['Name'] in ['.FSFUND HK', 'CLFLDIF HK']	# open ended funds
@@ -474,8 +456,6 @@ if __name__ == '__main__':
 					   , help='date of the positions (yyyymmdd)')
 	args = parser.parse_args()
 
-	doLqaRequest(args.portfolio, args.date, buildLqaRequestOldStyle)
+	# doLqaRequest(args.portfolio, args.date, buildLqaRequestOldStyle)
 
-	# buildLqaRequestFromFiles(args.blp_file, args.geneva_file, buildLqaRequest)
-
-	# buildLqaRequestFromFilesCombined(args.blp_file, args.geneva_file, buildLqaRequestOldStyle)
+	doLqaRequestCombined(args.portfolio, args.date, buildLqaRequestOldStyle)
