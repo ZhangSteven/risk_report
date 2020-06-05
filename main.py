@@ -308,20 +308,20 @@ if __name__ == '__main__':
 	SFC template file. Update that template file if necessary.
 	"""
 	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
-	compose(
-		print
-	  , lambda positions: \
-	  		getTotalMarketValueFromAssetType( date, positions, getBlpData(date)
-	  										, 'USD', 'Cash')
-	  , getPortfolioPositions
-	)(portfolio, date)
-
-
 	# compose(
 	# 	print
 	#   , lambda positions: \
-	#   		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
-	#   							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
-	#   							   )
+	#   		getTotalMarketValueFromAssetType( date, positions, getBlpData(date)
+	#   										, 'USD', 'Cash')
 	#   , getPortfolioPositions
-	# )(portfolio, date, mode)
+	# )(portfolio, date)
+
+
+	compose(
+		print
+	  , lambda positions: \
+	  		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
+	  							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	  							   )
+	  , getPortfolioPositions
+	)(portfolio, date, mode)
