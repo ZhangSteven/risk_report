@@ -245,12 +245,12 @@ if __name__ == '__main__':
 
 
 	# Step 1. Create a file containing the (id, idtype) columns.
-	compose(
-		print
-	  , lambda positions: \
-			writeIdnTypeToFile(portfolio + '_idntype_' + date + '.csv', positions)
-	  , getPortfolioPositions
-	)(portfolio, date)
+	# compose(
+	# 	print
+	#   , lambda positions: \
+	# 		writeIdnTypeToFile(portfolio + '_idntype_' + date + '.csv', positions)
+	#   , getPortfolioPositions
+	# )(portfolio, date)
 
 
 	# Step 2. Use the BlpData_Template.xlsx to load Bloomberg data and save
@@ -261,7 +261,7 @@ if __name__ == '__main__':
 	# Step 3. Check if all asset types can be determined.
 	# compose(
 	# 	print
-	#   , lambda positions: writeCsv( 'geneva_assetType_' + date + '.csv'
+	#   , lambda positions: writeCsv( portfolio + '_assetType_' + date + '.csv'
 	# 					  		  , map( partial(getAssetType, getBlpData(date))
 	# 					  		  	   , positions) 
 	# 					  		  )
@@ -293,7 +293,7 @@ if __name__ == '__main__':
 	"""
 	# compose(
 	# 	print
-	#   , lambda positions: writeCsv( 'countries_' + date + '.csv'
+	#   , lambda positions: writeCsv( portfolio + '_countries_' + date + '.csv'
 	# 					  		  , chain( [('Country Code', )]
 	# 					  		  		 , map(lambda s: [s], positions))
 	# 					  		  )
@@ -308,13 +308,13 @@ if __name__ == '__main__':
 	SFC template file. Update that template file if necessary.
 	"""
 	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
-	# compose(
-	# 	print
-	#   , lambda positions: \
-	#   		getTotalMarketValueFromAssetType( date, positions, getBlpData(date)
-	#   										, 'USD', 'Cash')
-	#   , getPortfolioPositions
-	# )(portfolio, date)
+	compose(
+		print
+	  , lambda positions: \
+	  		getTotalMarketValueFromAssetType( date, positions, getBlpData(date)
+	  										, 'USD', 'Cash')
+	  , getPortfolioPositions
+	)(portfolio, date)
 
 
 	# compose(

@@ -167,6 +167,12 @@ getSpecialCaseAssetType = lambda position: \
 
 
 
+""" [Dictionary] position => [String] country """
+getSpecialCaseCountry = lambda position: \
+	getAssetTypeSpecialCaseData()[getIdnType(position)[0]]['CountryCode']
+
+
+
 def isSpecialCase(position):
 	"""
 	[Dictionary] position => [Bool] is this a special case in asset type,
@@ -208,6 +214,7 @@ def getCountryCode(blpData, position):
 
 
 	return \
+	getSpecialCaseCountry(position) if isSpecialCase(position) else \
 	getPrivateSecurityCountry(position) if isPrivateSecurity(position) else \
 	getRepoCountry(position) if isRepo(position) else \
 	getMoneyMarketCountry(position) if isMoneyMarket(position) else \
@@ -268,8 +275,9 @@ def getMoneyMarketCountry(position):
 	A money market product can be an OTC product, for example, a fixed deposit,
 	so we deal with them here.
 	"""
-	# FIXME: Add implementation
-	lognRaise('getMoneyMarketCountry(): {0}'.format(getIdnType(position)))
+	# FIXME: Assume all money market instruments are made in Hong Kong
+	return lognContinue( 'getMoneyMarketCountry(): {0}'.format(getIdnType(position))
+					   , 'HK')
 
 
 
@@ -384,8 +392,11 @@ isFinancial = lambda blpData, position: \
 """ 
 	[Dictionary] blpData, [Dictionary] position
 			=> [Bool] is SFC Authorized Fund
+
+	# FIXME: rely on hardcoded special cases
 """
 isSFCAuthorized = lambda blpData, position: \
+	False if getIdnType(position)[0] == '.FSFUND HK Equity' else \
 	True if blpData[getIdnType(position)[0]]['SFC_AUTHORIZED_FUND'] == 'Y' else False
 
 

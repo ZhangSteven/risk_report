@@ -219,17 +219,21 @@ def getAllPositionsBlp(date, mode):
 	)
 
 
-	addNewFields = lambda date, position: \
+	floatToString = lambda x: str(int(x)) if isinstance(x, float) else x
+
+
+	updatePosition = lambda date, position: \
 		mergeDict( position
 				 , { 'AsOfDate': date
 				   , 'Remarks1': 'Bloomberg MAV Risk-Mon Steven'
+				   , 'Account Code': floatToString(position['Account Code']) 
 				   }
 				 )
 
 
 	getPositions = lambda date, lines: \
 	compose(
-		partial(map, partial(addNewFields, date))
+		partial(map, partial(updatePosition, date))
 	  , partial(filterfalse, lambda p: p['Account Code'] == '')
 	  , getRawPositions
 	  , lambda lines: dropwhile(lambda line: line[0] != 'Name', lines)

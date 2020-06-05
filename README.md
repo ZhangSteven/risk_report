@@ -11,6 +11,22 @@ Purpose of this application:
 
 ## To Do
 
+Consider these special cases for asset types, whose "INDUSTRY_SECTOR" = "Funds"
+
+JPMULCD LX Equity
+2823 HK Equity
+SPY US Equity
+ICSUSPI ID Equity
+CLFLDIF HK Equity
+QQQ US Equity
+
+
+NOTE: we can logic for ABS security, whose "INDUSTRY_SECTOR" = "Asset Backed Securities"
+
+USG8116KAB82	ISIN
+
+
+
 1. Bloomberg Position is in terms of 1,000s for Bond, should we X1000 for bond quantity when submitting for LQA request?
 
 3. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
