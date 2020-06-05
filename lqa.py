@@ -8,7 +8,6 @@
 
 from risk_report.data import getPortfolioPositions, getIdnType, getQuantity
 from risk_report.geneva import isGenevaPosition
-from risk_report.blp import getBlpAssetType
 from utils.excel import fileToLines
 from utils.iter import pop
 from functools import partial, reduce
@@ -354,18 +353,34 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
+	"""
+		Generate LQA requewst files. To generate LQA request for 19437 only, do
+
+			$python lqa.py 19437 20200529
+
+		To generate LQA request for all positions, do
+
+			$python lqa.py all 20200529
+
+		If you want to have the old in csv format for human inspection, do
+
+			$python lqa.py 19437 202000529 --old
+
+		If you want to build two output files with clo and non-clo separated,
+		uncomment the code block blow and run the program.
+	"""
+
 	import argparse
-	parser = argparse.ArgumentParser(description='Process Bloomberg and Geneva holding File ' \
-										+ 'and Geneva investment positions report (DIF only), ' \
-										+ 'then produce LQA request files.')
+	parser = argparse.ArgumentParser(description='produce LQA request files.')
 	parser.add_argument( 'portfolio', metavar='portfolio', type=str
 					   , help='for which portfolio')
 	parser.add_argument( 'date', metavar='date', type=str
 					   , help='date of the positions (yyyymmdd)')
+	parser.add_argument( '--old', type=str, nargs='?', const=True, default=False
+					   , help='use old style output for human inspection')
 	args = parser.parse_args()
 
-	# writer = buildLqaRequestOldStyle
-	writer = buildLqaRequest
+	writer = buildLqaRequestOldStyle if args.old else buildLqaRequest
 
 	# Create CLO and non-CLO separately
 	# compose(
@@ -376,7 +391,8 @@ if __name__ == '__main__':
 	# )(args.portfolio, args.date)
 
 
-	# Create one combined masterlist
+	# Create one combined masterlist, use this if you want to generate
+	# LQA request for just one portfolio, say 19437.
 	compose(
 		partial(writer, 'masterlist', args.date)
 	  , consolidate

@@ -164,7 +164,7 @@ def getTotalMarketValueFromAssetType( date
 
 
 
-def writeAssetAllocationCsv(date, positions, blpData, reportingCurrency, countries, assetTypes):
+def writeAssetAllocationCsv(portfolio, date, positions, blpData, reportingCurrency, countries, assetTypes):
 	"""
 	[String] date (yyyymmdd),
 	[Iterator] positions,
@@ -192,7 +192,7 @@ def writeAssetAllocationCsv(date, positions, blpData, reportingCurrency, countri
 
 	return \
 	compose(
-		lambda lines: writeCsv( 'asset_allocation_' + date + '.csv'
+		lambda lines: writeCsv( portfolio + '_asset_allocation_' + date + '.csv'
 							  , lines)
 	  , partial(map, partial(assetTypeLineToValues, list(positions), blpData))
 	  , partial(map, partial(assetTypeWithCountry, countries))
@@ -216,16 +216,41 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	date = '20200529'
-	portfolio = '19437'
+	"""
+		Generate asset allocation report. Say for 19437 on 2020-05-29, do
+
+			$python main.py 19437 20200529
+
+		If you want to use test datastore, so
+
+			$python main.py 19437 20200529 --test
+
+		Before generating the final asset allocation report in step 6, go through
+		step 1 - 5 to make sure the blpData is ready.
+	"""
+
+	import argparse
+	parser = argparse.ArgumentParser(description='Generate asset allocation reports.')
+	parser.add_argument( 'portfolio', metavar='portfolio', type=str
+					   , help='for which portfolio')
+	parser.add_argument( 'date', metavar='date', type=str
+					   , help='date of the positions (yyyymmdd)')
+	parser.add_argument( '--test', type=str, nargs='?', const=True, default=False
+					   , help='use test mode datastore')
+	args = parser.parse_args()
+
+	mode = 'test' if args.test else 'production'
+	portfolio = args.portfolio
+	date = args.date
+
 
 	# Step 1. Create a file containing the (id, idtype) columns.
-	# compose(
-	# 	print
-	#   , lambda positions: \
-	# 		writeIdnTypeToFile('geneva_' + date + '_idntype.csv', positions)
-	#   , getPortfolioPositions
-	# )(portfolio, date)
+	compose(
+		print
+	  , lambda positions: \
+			writeIdnTypeToFile(portfolio + '_idntype_' + date + '.csv', positions)
+	  , getPortfolioPositions
+	)(portfolio, date)
 
 
 	# Step 2. Use the BlpData_Template.xlsx to load Bloomberg data and save
@@ -292,13 +317,11 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	compose(
-		print
-	  , lambda positions: writeAssetAllocationCsv( date
-	  											 , positions
-	  											 , getBlpData(date)
-	  											 , 'USD'
-	  											 , *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
-	  											 )
-	  , getPortfolioPositions
-	)(portfolio, date)
+	# compose(
+	# 	print
+	#   , lambda positions: \
+	#   		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
+	#   							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	#   							   )
+	#   , getPortfolioPositions
+	# )(portfolio, date, mode)
