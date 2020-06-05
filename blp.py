@@ -53,10 +53,12 @@ isBlpPrivateSecurity = lambda position: \
 """
 	[Dictionary] position => [Float] market value of the position
 
-# FIXME: add implementation
+# FIXME: For a bond, does the market value include accured interest?
+
+# FIXME: For derivatives, we may need to use Gross MV instead of the market value,
+which is net mv.
 """
-getBlpMarketValue = lambda position: \
-	lognRaise('getBlpMarketValue(): not implemented')
+getBlpMarketValue = lambda position: position['Market Value']
 
 
 
@@ -70,9 +72,27 @@ getBlpPortfolioId = lambda position: position['Account Code']
 
 
 
-""" [Dictionary] position => [String] Book currency of the position """
+""" 
+	[Dictionary] position => [Float] quantity of the position 
+
+	Bloomberg display bond quantity in terms of 1,000, therefore if a bond
+	quantity = 6,000, it's actually 6,000,000
+"""
+getBlpQuantity = lambda position: \
+	position['Position'] * 1000 if getBlpAssetType(position).endswith('Bond') else \
+	position['Position']
+
+
+
+""" 
+	[Dictionary] position => [String] Book currency of the position 
+	
+	Bloomberg market value is displayed in the worksheet currency. Therefore
+	we use the worksheet name to determine the currency.
+"""
 getBlpBookCurrency = lambda position: \
-	getBookCurrency(position['Account Code'])
+	'USD' if position['Remarks1'] == 'Bloomberg MAV Risk-Mon Steven' else \
+	lognRaise('getBlpBookCurrency(): unsupported position type: {0}'.format(position['Remarks1']))
 
 
 
@@ -81,19 +101,25 @@ getBlpBookCurrency = lambda position: \
 
 # FIXME: add implementation
 """
-getBookCurrency = lambda accountCode: \
-	lognRaise('getBookCurrency(): not implemented')
+# getBookCurrency = lambda accountCode: \
+# 	lognRaise('getBookCurrency(): not implemented')
 
 
 
-def getBlpFundType(position):
-	"""
+getBlpIdnType = lambda position: \
+	(position['Name'] + ' Equity', 'TICKER') if position['Asset Type'] == 'Equity' else \
+	(position['Name'], 'TICKER') if position['ISIN'] == '' else \
+	(position['ISIN'], 'ISIN')
+
+
+
+"""
 	[Dictionary] position => [Tuple] Asset Class
 
 	If position is a fund type in Bloomberg, output its exact fund type
-	"""
-	# FIXME: Add implementation
-	lognRaise('getBlpFundType(): {0}'.format(getIdnType(position)))
+"""
+getBlpAssetType = lambda position: \
+	position['Asset Type']
 
 
 

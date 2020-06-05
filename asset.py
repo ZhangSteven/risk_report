@@ -2,13 +2,10 @@
 #
 # Asset allocation logic for SFC
 # 
-from risk_report.lqa import getBlpIdnType, getGenevaIdnType
-from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId, getGenevaFundType \
-							, isGenevaFund, isGenevaFxForward, isGenevaCash \
-							, isGenevaRepo, isGenevaMoneyMarket, isGenevaPrivateSecurity
-from risk_report.blp import getBlpPortfolioId, getBlpFundType, isBlpFund, isBlpFxForward \
-							, isBlpCash, isBlpRepo, isBlpMoneyMarket, isBlpPrivateSecurity
-from risk_report.data import getRatingScoreMapping, getCountryMapping, getAssetTypeSpecialCaseData
+from risk_report.geneva import isGenevaPosition, getGenevaAssetType
+from risk_report.data import getRatingScoreMapping, getCountryMapping, getAssetTypeSpecialCaseData \
+							, getPortfolioId, getIdnType, isPrivateSecurity, isCash \
+							, isMoneyMarket, isRepo, isFxForward, isFund
 from utils.iter import pop, firstOf
 from utils.utility import mergeDict
 from toolz.functoolz import compose
@@ -42,36 +39,6 @@ def byCountryGroup(blpData, countryGroup, positions):
 
 
 
-isPrivateSecurity = lambda position: \
-	isGenevaPrivateSecurity(position) if isGenevaPosition(position) else isBlpPrivateSecurity(position)
-
-
-
-isCash = lambda position: \
-	isGenevaCash(position) if isGenevaPosition(position) else isBlpCash(position)
-
-
-
-isMoneyMarket = lambda position: \
-	isGenevaMoneyMarket(position) if isGenevaPosition(position) else isBlpMoneyMarket(position) 
-
-
-
-isRepo = lambda position: \
-	isGenevaRepo(position) if isGenevaPosition(position) else isBlpRepo(position)
-
-
-
-isFxForward = lambda position: \
-	isGenevaFxForward(position) if isGenevaPosition(position) else isBlpFxForward(position)
-
-
-
-isFund = lambda position: \
-	isGenevaFund(position) if isGenevaPosition(position) else isBlpFund(position)
-
-
-
 def getAssetType(blpData, position):
 	"""
 	[Dictionary] position (a Geneva or Blp position)
@@ -82,9 +49,6 @@ def getAssetType(blpData, position):
 	"""
 	logger.debug('getAssetType(): {0}'.format(getIdnType(position)))
 
-
-
-	
 	return \
 	getSpecialCaseAssetType(position) if isSpecialCase(position) else \
 	getPrivateSecurityAssetType(position) if isPrivateSecurity(position) else \
@@ -92,15 +56,26 @@ def getAssetType(blpData, position):
 	('Foreign Exchange Derivatives', ) if isFxForward(position) else \
 	('Fixed Income', 'Cash Equivalents') if isMoneyMarket(position) else \
 	getRepoAssetType(position) if isRepo(position) else \
-	getFundType(position) if isFund(position) else \
+	getFundAssetType(position) if isFund(position) else \
 	getOtherAssetType(blpData, position)
 # End of getAssetType()
 
 
 
-getFundType = lambda position: \
-	getGenevaFundType(position) if isGenevaPosition(position) else \
-	getBlpFundType(position)
+def getFundAssetType(position):
+	"""
+		[Dictionary] position => [Tuple] Asset Type
+
+		Assume: the position is already a fund
+	"""
+	toAssetTypeGeneva = lambda tp: \
+		('Fund', 'Exchange Traded Funds') if tp == 'Exchange Trade Fund' else \
+		('Fund', 'Real Estate Investment Trusts') if tp == 'Real Estate Investment Trust' else \
+		lognRaise('toAssetTypeGeneva(): unsupported {0}'.format(tp))
+
+	return \
+	toAssetTypeGeneva(getGenevaAssetType(position)) if isGenevaPosition(position) \
+	else lognRaise('getFundAssetType(): Bloomberg asset not supported yet')
 
 
 
@@ -207,26 +182,6 @@ def isSpecialCase(position):
 	  					 , getAssetTypeSpecialCaseData()
 	  					 )
 	)(position)
-
-
-
-"""
-	[Dictionary] position (a Geneva or Blp position)
-		=> [Tuple] (id, idType)
-"""
-getIdnType = lambda position: \
-	getGenevaIdnType(position) if isGenevaPosition(position) else \
-	getBlpIdnType(position)
-
-
-
-"""
-	[Dictionary] position (a Geneva or Blp position)
-		=> [String] portfolio Id
-"""
-getPortfolioId = lambda position: \
-	getGenevaPortfolioId(position) if isGenevaPosition(position) else \
-	getBlpPortfolioId(position)
 
 
 

@@ -2,11 +2,9 @@
 # 
 
 import unittest2
-from risk_report.utility import getCurrentDirectory
-from risk_report.asset import getAssetType, getAverageRatingScore, isInvestmentGrade \
-							, getIdnType
-from risk_report.geneva import readGenevaInvestmentPositionFile
-from risk_report.main import loadBlpDataFromFile, ratingsApplicable
+from risk_report.asset import getAssetType, getAverageRatingScore, isInvestmentGrade
+from risk_report.main import ratingsApplicable
+from risk_report.data import getIdnType, getPortfolioPositions, getBlpData
 from itertools import filterfalse
 from functools import partial
 from utils.iter import firstOf
@@ -21,15 +19,10 @@ class TestAsset(unittest2.TestCase):
 		super(TestAsset, self).__init__(*args, **kwargs)
 
 
-	def testDIFAssetType(self):
-		inputFile = join(getCurrentDirectory(), 'samples', 'DIF_20200429_investment_position.xlsx')
-		date, positions = compose(\
-			lambda t: (t[0], list(t[1]))
-		  , readGenevaInvestmentPositionFile
-		)(inputFile)
 
-		blpDataFile = join(getCurrentDirectory(), 'samples', 'DIF_20200429_BlpData.xlsx')
-		blpData = loadBlpDataFromFile(blpDataFile)
+	def testDIFAssetType(self):
+		positions = list(getPortfolioPositions('19437', '20200429', 'test'))
+		blpData = getBlpData('20200429', 'test')
 
 		# USD cash on hand position
 		isUSDCash = lambda x: \
@@ -78,14 +71,8 @@ class TestAsset(unittest2.TestCase):
 
 
 	def testAverageRating(self):
-		inputFile = join(getCurrentDirectory(), 'samples', 'DIF_20200429_investment_position.xlsx')
-		date, positions = compose(\
-			lambda t: (t[0], list(t[1]))
-		  , readGenevaInvestmentPositionFile
-		)(inputFile)
-
-		blpDataFile = join(getCurrentDirectory(), 'samples', 'DIF_20200429_BlpData.xlsx')
-		blpData = loadBlpDataFromFile(blpDataFile)
+		positions = getPortfolioPositions('19437', '20200429', 'test')
+		blpData = getBlpData('20200429', 'test')
 
 		securitiesWithRatings = compose(
 			list

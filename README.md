@@ -11,9 +11,7 @@ Purpose of this application:
 
 ## To Do
 
-1. Refactor code, move things like isGenevaPosition, isCash, to data.py, including LQA.
-
-2. Add test case for consolicated positions after merging BLP and Geneva positions, LQA part.
+1. Bloomberg Position is in terms of 1,000s for Bond, should we X1000 for bond quantity when submitting for LQA request?
 
 3. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
 

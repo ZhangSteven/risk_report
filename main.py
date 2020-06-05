@@ -9,10 +9,9 @@ from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
 							, getAverageRatingScore, getCountryCode, byCountryGroup \
 							, byAssetTypeFilterTuple, byCountryFilter, countryNotApplicable
-from risk_report.geneva import isGenevaPosition, getGenevaMarketValue, getGenevaBookCurrency
-from risk_report.blp import getBlpMarketValue, getBlpBookCurrency
 from risk_report.sfc import readSfcTemplate
-from risk_report.data import getFX, getPortfolioPositions, getBlpData
+from risk_report.data import getFX, getPortfolioPositions, getBlpData, getMarketValue \
+							, getBookCurrency
 from utils.iter import pop
 from utils.utility import writeCsv, mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose, juxt
@@ -81,24 +80,6 @@ def getFISecuritiesWoRatings(blpData, positions):
 
 	return missing
 # End of getFISecuritiesWoRatings()
-
-
-
-"""
-	[Dictionary] position => [Float] market value of the position
-"""
-getMarketValue = lambda position: \
-	getGenevaMarketValue(position) if isGenevaPosition(position) else \
-	getBlpMarketValue(position)
-
-
-
-"""
-	[Dictionary] position => [String] book currency of the position
-"""
-getBookCurrency = lambda position: \
-	getGenevaBookCurrency(position) if isGenevaPosition(position) else \
-	getBlpBookCurrency(position)
 
 
 

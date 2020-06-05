@@ -3,8 +3,15 @@
 # Functions related to data retrieving are grouped here.
 # 
 from risk_report.utility import getInputDirectory
-from risk_report.blp import getBlpPortfolioId
-from risk_report.geneva import getGenevaPortfolioId
+from risk_report.blp import getBlpPortfolioId, getBlpPositionDate, getBlpMarketValue \
+							, getBlpBookCurrency, getBlpPortfolioId, getBlpIdnType \
+							, getBlpQuantity, isBlpPrivateSecurity, isBlpRepo \
+							, isBlpMoneyMarket, isBlpCash, isBlpFxForward, isBlpFund
+from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId, getGenevaPositionDate \
+							, getGenevaMarketValue, getGenevaBookCurrency, getGenevaPortfolioId \
+							, getGenevaIdnType, getGenevaAssetType, isGenevaFund, isGenevaFxForward, isGenevaCash \
+							, isGenevaRepo, isGenevaMoneyMarket, isGenevaPrivateSecurity \
+							, getGenevaQuantity
 from clamc_datafeed.feeder import getPositions
 from utils.excel import getRawPositions, fileToLines, getRawPositionsFromFile
 from utils.iter import pop, firstOf
@@ -19,10 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 
-getCountryMapping = lambda : loadCountryGroupMappingFromFile('SFC_Country.xlsx')
+getCountryMapping = lambda: loadCountryGroupMappingFromFile('SFC_Country.xlsx')
 
 
-getRatingScoreMapping = lambda : loadRatingScoreMappingFromFile('RatingScore.xlsx')
+getRatingScoreMapping = lambda: loadRatingScoreMappingFromFile('RatingScore.xlsx')
 
 
 getAssetTypeSpecialCaseData = lambda: loadAssetTypeSpecialCaseFromFile('AssetType_SpecialCase.xlsx')
@@ -49,9 +56,120 @@ getPortfolioPositions = lambda portfolio, date, mode='production': \
 
 
 
-getBlpPositions = lambda portfolio, date, mode: \
-	filter( lambda p: getBlpPortfolioId(p) == portfolio
-		  , getAllPositionsBlp(date, mode))
+@lru_cache(maxsize=3)
+def getFX(date, targetCurrency):
+	"""
+	[String] date (yyyymmdd),
+	[String] targetCurrency
+		=> [Dictionary] currency -> exchange rate
+
+	Exchange rate: to get 1 unit of target currency, how many units of another 
+	currency is needed.
+
+	For example, d = loadFXTableFromFile('20200430', 'USD')
+
+	Then
+
+	d['HKD'] = 7.7520 (USDHKD as of 20200430)
+	"""
+	toDateString = lambda x: \
+		datetime.strftime(fromExcelOrdinal(x), '%Y%m%d')
+
+
+	return \
+	compose(
+		partial(mergeDict, {targetCurrency: 1.0})
+	  , dict
+	  , partial(map, lambda p: (p['Currency'], p['FX']))
+	  , partial( filter
+	  		   , lambda p: toDateString(p['Date']) == date and p['Reporting Currency'] == targetCurrency
+	  		   )
+	  , getRawPositionsFromFile
+	)('FX.xlsx')
+
+
+
+getPositionDate = lambda position: \
+	getGenevaPositionDate(position) if isGenevaPosition(position) else \
+	getBlpPositionDate(position)
+
+
+
+getQuantity = lambda position: \
+	getGenevaQuantity(position) if isGenevaPosition(position) else \
+	getBlpQuantity(position)
+
+
+
+"""
+	[Dictionary] position 
+		=> [Float] market value of the position, in the portfolio's book
+			currency
+	
+	# FIXME: is it true for Bloomberg positions?
+"""
+getMarketValue = lambda position: \
+	getGenevaMarketValue(position) if isGenevaPosition(position) else \
+	getBlpMarketValue(position)
+
+
+
+"""
+	[Dictionary] position => [String] book currency of the position
+"""
+getBookCurrency = lambda position: \
+	getGenevaBookCurrency(position) if isGenevaPosition(position) else \
+	getBlpBookCurrency(position)
+
+
+
+"""
+	[Dictionary] position (a Geneva or Blp position)
+		=> [Tuple] (id, idType)
+"""
+getIdnType = lambda position: \
+	getGenevaIdnType(position) if isGenevaPosition(position) else \
+	getBlpIdnType(position)
+
+
+
+"""
+	[Dictionary] position (a Geneva or Blp position)
+		=> [String] portfolio Id
+"""
+getPortfolioId = lambda position: \
+	getGenevaPortfolioId(position) if isGenevaPosition(position) else \
+	getBlpPortfolioId(position)
+
+
+
+isPrivateSecurity = lambda position: \
+	isGenevaPrivateSecurity(position) if isGenevaPosition(position) else isBlpPrivateSecurity(position)
+
+
+
+isCash = lambda position: \
+	isGenevaCash(position) if isGenevaPosition(position) else isBlpCash(position)
+
+
+
+isMoneyMarket = lambda position: \
+	isGenevaMoneyMarket(position) if isGenevaPosition(position) else isBlpMoneyMarket(position) 
+
+
+
+isRepo = lambda position: \
+	isGenevaRepo(position) if isGenevaPosition(position) else isBlpRepo(position)
+
+
+
+isFxForward = lambda position: \
+	isGenevaFxForward(position) if isGenevaPosition(position) else isBlpFxForward(position)
+
+
+
+isFund = lambda position: \
+	isGenevaFund(position) if isGenevaPosition(position) else isBlpFund(position)
 
 
 
@@ -126,6 +244,12 @@ def getAllPositionsBlp(date, mode):
 	  , lambda file: lognContinue('getAllPositionsBlp(): {0}'.format(file), file)
 	  , getBlpPositionFile
 	)(date, mode)
+
+
+
+getBlpPositions = lambda portfolio, date, mode: \
+	filter( lambda p: getBlpPortfolioId(p) == portfolio
+		  , getAllPositionsBlp(date, mode))
 
 
 
@@ -250,38 +374,6 @@ def loadAssetTypeSpecialCaseFromFile(file):
 	  , fileToLines
 	)(file)
 
-
-
-@lru_cache(maxsize=3)
-def getFX(date, targetCurrency):
-	"""
-	[String] date (yyyymmdd),
-	[String] targetCurrency
-		=> [Dictionary] currency -> exchange rate
-
-	Exchange rate: to get 1 unit of target currency, how many units of another 
-	currency is needed.
-
-	For example, d = loadFXTableFromFile('20200430', 'USD')
-
-	Then
-
-	d['HKD'] = 7.7520 (USDHKD as of 20200430)
-	"""
-	toDateString = lambda x: \
-		datetime.strftime(fromExcelOrdinal(x), '%Y%m%d')
-
-
-	return \
-	compose(
-		partial(mergeDict, {targetCurrency: 1.0})
-	  , dict
-	  , partial(map, lambda p: (p['Currency'], p['FX']))
-	  , partial( filter
-	  		   , lambda p: toDateString(p['Date']) == date and p['Reporting Currency'] == targetCurrency
-	  		   )
-	  , getRawPositionsFromFile
-	)('FX.xlsx')
 
 
 

@@ -6,8 +6,9 @@
 # 2) Read LQA response
 # 
 
-from risk_report.data import getPortfolioPositions
+from risk_report.data import getPortfolioPositions, getIdnType, getQuantity
 from risk_report.geneva import isGenevaPosition
+from risk_report.blp import getBlpAssetType
 from utils.excel import fileToLines
 from utils.iter import pop
 from functools import partial, reduce
@@ -78,54 +79,12 @@ def argumentsAsTuple(func):
 
 
 
-def doLqaRequestCombined(portfolio, date, writer):
+def createLqaPositions(portfolio, date, mode='production'):
 	"""
 	[String] portfolio, [String] date (yyyymmdd), [Function] writer
-		=> [String] master list csv file (all positios combined)
-
-	Where "writer" is an output function that takes name, date and positions
-	and write to an output file.
-
-	Side effect: create one LQA request files
-	"""
-	processGenevaPositions = compose(
-		getGenevaLqaPositions
-	  , partial(filter, isGenevaPosition)
-	)
-
-
-	processBlpPositions = compose(
-		getBlpLqaPositions
-	  , partial(filterfalse, isGenevaPosition)
-	)
-
-
-	return compose(
-		lambda t: writer( 'masterlist'
-						, date
-						, consolidate(chain(t[0], t[1], t[2]))
-						)
-
-	  , lambda positions: ( *processBlpPositions(positions)
-						  , processGenevaPositions(positions)
-						  )
-	  , list
-	  , getPortfolioPositions
-	)(portfolio, date)
-
-
-
-def doLqaRequest(portfolio, date, writer):
-	"""
-	[String] portfolio, [String] date (yyyymmdd), [Function] writer
-		=> ( [STring] master list non-CLO csv file
-		   , [String] master list CLO csv file
+		=> ( [Iterator] non-clo positions
+		   , [Iterator] clo positions
 		   )
-
-	Where "writer" is an output function that takes name, date and positions
-	and write to an output file.
-
-	Side effect: create 2 LQA request files
 	"""
 	processGenevaPositions = compose(
 		getGenevaLqaPositions
@@ -140,48 +99,15 @@ def doLqaRequest(portfolio, date, writer):
 
 
 	return compose(
-		lambda t: ( writer('masterlist_nonCLO', date, consolidate(chain(t[1], t[2])))
-				  , writer('masterlist_CLO', date, consolidate(t[0]))
+		lambda t: ( consolidate(chain(t[1], t[2]))
+				  , consolidate(t[0])
 				  )
 	  , lambda positions: ( *processBlpPositions(positions)
 						  , processGenevaPositions(positions)
 						  )
 	  , list
 	  , getPortfolioPositions
-	)(portfolio, date)
-
-
-
-def getGenevaIdnType(position):
-	"""
-	[Dictionary] position
-		=> ( [String] id,
-		   , [String] id type
-		   )
-
-	NOTE: this function should never throw an exception. So we make it always
-	return something even if we cannot determine what should be the asset type.
-	"""
-	ISINfromInvestID = lambda investId: \
-		lognContinue( 'getGenevaIdnType(): ISINfromInvestID: special case: {0}'.format(investId)
-					, investId) \
-		if len(investId) < 12 else investId[0:12]
-
-
-	isEquityType = lambda assetType: \
-		assetType in [ 'Common Stock', 'Real Estate Investment Trust'
-					 , 'Stapled Security', 'Exchange Trade Fund']
-
-	isBondType = lambda assetType: assetType.split()[-1] == 'Bond'
-
-	investId, assetType = position['InvestID'], position['SortKey']
-	
-
-	return \
-	(investId + ' Equity', 'TICKER') if isEquityType(assetType) else \
-	(ISINfromInvestID(investId), 'ISIN') if isBondType(assetType) else \
-	lognContinue( 'getGenevaIdnType(): special case: {0}'.format(position['InvestID'])
-				, (position['InvestID'], position['SortKey']))
+	)(portfolio, date, mode)
 
 
 
@@ -220,18 +146,12 @@ def getGenevaLqaPositions(positions):
 	# [Dictonary] p => [Dictionary] enriched position with id and idType
 	addIdnType = compose(
 		lambda t: mergeDict(t[2], {'Id': t[0], 'IdType': t[1]})
-	  , lambda p: (*getGenevaIdnType(p), p)
+	  , lambda p: (*getIdnType(p), p)
 	)
-
-
-	# Add a field 'Postion', useful in consolidation with Bloommberg Lqa positions
-	addPosition = lambda p: \
-		mergeDict(p, {'Position': p['Quantity']})
 
 
 	return compose(
 		partial(map, addIdnType)
-	  , partial(map, addPosition)
 	  , partial(filterfalse, noNeedLiquidityGeneva)
 	  , lambda positions: lognContinue('getGenevaLqaPositions(): start', positions)
 	)(positions)
@@ -266,7 +186,7 @@ def getBlpLqaPositions(positions):
 	# [Dictionary] position => [Dictioanry] position with id and idtype
 	updatePositionId = compose(
 		lambda t: mergeDict(t[2], {'Id': t[0], 'IdType': t[1]})
-	  , lambda position: (*getBlpIdnType(position), position)
+	  , lambda position: (*getIdnType(position), position)
 	)
 
 
@@ -301,21 +221,6 @@ def getBlpLqaPositions(positions):
 	  , removeUnwantedPositions		
 	  , lambda positions: lognContinue('getBlpLqaPositions(): start', positions)
 	)(positions)
-
-
-
-def getBlpIdnType(position):
-	"""
-	[Dictionary] position => [Tuple] (id, idType)
-	
-	Assume the position contain fields 'Name' (ticker), 'ISIN' and 'Asset Type'
-	"""
-	if position['Asset Type'] == 'Equity':
-		return (position['Name'] + ' Equity', 'TICKER')
-	elif position['ISIN'] == '':
-		return (position['Name'], 'TICKER')
-	else:
-		return (position['ISIN'], 'ISIN')
 
 
 
@@ -415,9 +320,12 @@ def buildLqaRequestOldStyle(name, date, positions):
 	=>
 
 	{'Id': '1 HK', 'Position': 300, ...}
+
+	NOTE: consolidated position is hard to tell whether it is a blp position or
+	a geneva position. Therefore we 'Position' field to store the total quantity.
 """
 consolidateGroup = lambda group: \
-	mergeDict(group[0].copy(), {'Position': sum(map(lambda p: p['Position'], group))})
+	mergeDict(group[0].copy(), {'Position': sum(map(getQuantity, group))})
 
 
 
@@ -456,6 +364,22 @@ if __name__ == '__main__':
 					   , help='date of the positions (yyyymmdd)')
 	args = parser.parse_args()
 
-	# doLqaRequest(args.portfolio, args.date, buildLqaRequestOldStyle)
+	# writer = buildLqaRequestOldStyle
+	writer = buildLqaRequest
 
-	doLqaRequestCombined(args.portfolio, args.date, buildLqaRequestOldStyle)
+	# Create CLO and non-CLO separately
+	# compose(
+	# 	lambda t: ( writer('masterlist_nonCLO', args.date, t[0])
+	# 		  	  , writer('masterlist_CLO', args.date, t[1])
+	# 		  	  )
+	#   , createLqaPositions
+	# )(args.portfolio, args.date)
+
+
+	# Create one combined masterlist
+	compose(
+		partial(writer, 'masterlist', args.date)
+	  , consolidate
+	  , lambda t: chain(t[0], t[1])
+	  , createLqaPositions
+	)(args.portfolio, args.date)
