@@ -14,6 +14,7 @@ from functools import partial, reduce
 from itertools import chain, filterfalse, dropwhile, takewhile
 from toolz.functoolz import compose
 from toolz.itertoolz import groupby as groupbyToolz
+from toolz.dicttoolz import valmap
 from utils.utility import mergeDict, writeCsv
 from os.path import join
 import logging
@@ -37,8 +38,15 @@ def getLqaData(lines):
 	)
 
 
+	def toNumber(x):
+		try:
+			return float(x)
+		except:
+			return x
+
+
 	return compose(
-		lambda positions: dict(map(lambda p: (p['SECURITIES'], p), positions))
+		partial(map, partial(valmap, toNumber))
 	  , lambda t: map(partial(toPosition, t[0]), t[1])
 	  , lambda lines: (pop(lines), lines)
 	  , takeInBetween
@@ -47,13 +55,25 @@ def getLqaData(lines):
 
 
 """
-	[String] file (LQA result in Excel File) => [Dictionary] LQA result
+	[String] LQA response file => [Iterator] LQA position
+
+	Read Bloomberg LQA response file, see "samples/difLqa20200529.bbg"
+	for an example.
 """
-readLqaDataFromFile = compose(
-  	getLqaData
-  , fileToLines
-  , lambda file: lognContinue('readLqaDataFromFile(): {0}'.format(file), file)
-)
+def readLqaDataFromFile(file):
+	def fileToLines(file):
+		with open(file, 'r') as lqaFile:
+			for line in lqaFile:
+				yield line.strip()
+
+
+	return \
+	compose(
+	  	getLqaData
+	  , partial(map, lambda line: line.split('|'))
+	  , fileToLines
+	  , lambda file: lognContinue('readLqaDataFromFile(): {0}'.format(file), file)
+	)(file)
 
 
 
