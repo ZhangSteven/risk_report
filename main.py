@@ -259,14 +259,14 @@ if __name__ == '__main__':
 
 
 	# Step 3. Check if all asset types can be determined.
-	# compose(
-	# 	print
-	#   , lambda positions: writeCsv( portfolio + '_assetType_' + date + '.csv'
-	# 					  		  , map( partial(getAssetType, getBlpData(date))
-	# 					  		  	   , positions) 
-	# 					  		  )
-	#   , getPortfolioPositions
-	# )(portfolio, date)
+	compose(
+		print
+	  , lambda positions: writeCsv( portfolio + '_assetType_' + date + '.csv'
+						  		  , map( partial(getAssetType, getBlpData(date))
+						  		  	   , positions) 
+						  		  )
+	  , getPortfolioPositions
+	)(portfolio, date)
 
 
 	"""
@@ -317,11 +317,11 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	compose(
-		print
-	  , lambda positions: \
-	  		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
-	  							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
-	  							   )
-	  , getPortfolioPositions
-	)(portfolio, date, mode)
+	# compose(
+	# 	print
+	#   , lambda positions: \
+	#   		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
+	#   							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	#   							   )
+	#   , getPortfolioPositions
+	# )(portfolio, date, mode)
