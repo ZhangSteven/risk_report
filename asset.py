@@ -81,7 +81,8 @@ def getFundAssetType(position):
 
 # FIXME: add implementation
 getRepoAssetType = lambda position: \
-	lognRaise('getRepoAssetType(): not supported')
+	('Others', )
+	# lognRaise('getRepoAssetType(): not supported')
 
 
 
@@ -263,8 +264,9 @@ def getRepoCountry(position):
 
 	A repo position is an OTC product, so we deal with them here.
 	"""
-	# FIXME: Add implementation
-	lognRaise('getRepoCountry(): {0}'.format(getIdnType(position)))
+	# FIXME: Assume HK as the repo country
+	return 'HK'
+	# lognRaise('getRepoCountry(): {0}'.format(getIdnType(position)))
 
 
 
@@ -301,8 +303,7 @@ def getFundCountry(blpData, position):
 	is not yet clear, so we put it here.
 	"""
 	# FIXME: Need a formal implementation, now just case by case
-	fundCountry = { '2823 HK Equity': 'HK'	# iShares FTSE A50 China ETF
-				  }
+	fundCountry = {}
 
 	try:
 		return fundCountry[getIdnType(position)[0]]

@@ -259,14 +259,14 @@ if __name__ == '__main__':
 
 
 	# Step 3. Check if all asset types can be determined.
-	compose(
-		print
-	  , lambda positions: writeCsv( portfolio + '_assetType_' + date + '.csv'
-						  		  , map( partial(getAssetType, getBlpData(date))
-						  		  	   , positions) 
-						  		  )
-	  , getPortfolioPositions
-	)(portfolio, date)
+	# compose(
+	# 	print
+	#   , lambda positions: writeCsv( portfolio + '_assetType_' + date + '.csv'
+	# 					  		  , map( partial(getAssetType, getBlpData(date))
+	# 					  		  	   , positions) 
+	# 					  		  )
+	#   , getPortfolioPositions
+	# )(portfolio, date)
 
 
 	"""
@@ -280,7 +280,7 @@ if __name__ == '__main__':
 	#   , lambda positions: \
 	#   		'All FI securities have at least one credit rating' if len(positions) == 0 else \
 	#   		writeCsv( 'MissingCreditRating_' + date + '.csv'
-	# 				, chain([('Id', 'IdType')], positions)
+	# 				, chain([('Id', 'IdType')], set(positions))
 	# 				)
 	#   , partial(getFISecuritiesWoRatings, getBlpData(date))
 	#   , getPortfolioPositions
@@ -317,11 +317,11 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	# compose(
-	# 	print
-	#   , lambda positions: \
-	#   		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
-	#   							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
-	#   							   )
-	#   , getPortfolioPositions
-	# )(portfolio, date, mode)
+	compose(
+		print
+	  , lambda positions: \
+	  		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
+	  							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	  							   )
+	  , getPortfolioPositions
+	)(portfolio, date, mode)

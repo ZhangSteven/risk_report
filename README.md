@@ -11,27 +11,31 @@ Purpose of this application:
 
 ## To Do
 
-Consider these special cases for asset types, whose "INDUSTRY_SECTOR" = "Funds"
+1. What is the country code if a security's geographical region is global, e.g., ICSUSPI ID Equity and JPMULCD LX Equity?
 
-JPMULCD LX Equity
-2823 HK Equity
-SPY US Equity
-ICSUSPI ID Equity
-CLFLDIF HK Equity
-QQQ US Equity
+2. What asset type should we put REPO into?
 
+3. What country code should we assign to REPO positions?
 
-NOTE: we can logic for ABS security, whose "INDUSTRY_SECTOR" = "Asset Backed Securities"
+4. What's the credit rating for the below:
+	1. Fitch, F1+
+	2. Moody's NR, 
+	3. Fitch A+ \*-
+	4. Fitch A \*-
+	5. Fitch A- \*-
+	6. Fitch A+u
+	7. Moody's A3 \*+
+	8. S&P AA- \*-
+	9. Moody's A1 \*-
+	10. Fitch BBB-u
 
-USG8116KAB82	ISIN
+5. What market value should we use for a derivative position, like REPO or FX Forward, should we use net mv or gross mv?
 
+6. Now ABS is treated using special case handling, is there a way to tell whether it's cash or synthetic?
 
+7. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
 
-1. Bloomberg Position is in terms of 1,000s for Bond, should we X1000 for bond quantity when submitting for LQA request?
-
-3. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
-
-4. Consider using Geneva as the asset type provider?
+8. Consider using Geneva as the asset type provider?
 
 
 
