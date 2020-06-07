@@ -33,9 +33,7 @@ Purpose of this application:
 
 6. Now ABS is treated using special case handling, is there a way to tell whether it's cash or synthetic?
 
-7. Consider refactor code to improve efficiency, tag each position with country and asset type first, then filter them.
-
-8. Consider using Geneva as the asset type provider?
+7. Consider using Geneva as the asset type provider?
 
 
 

@@ -7,8 +7,8 @@
 from risk_report.utility import getCurrentDirectory
 from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
-							, getAverageRatingScore, getCountryCode, byCountryGroup \
-							, byAssetTypeFilterTuple, byCountryFilter, countryNotApplicable \
+							, getAverageRatingScore, getCountryCode \
+							, byCountryFilter, countryNotApplicable \
 							, toCountryGroup, fallsInAssetType
 from risk_report.sfc import readSfcTemplate
 from risk_report.data import getFX, getPortfolioPositions, getBlpData, getMarketValue \
@@ -160,7 +160,7 @@ def getTotalMarketValueFromCountrynAssetType( date
 	return \
 	compose(
 		partial(sumMarketValueInCurrency, date, reportingCurrency)
-	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
+	  , partial(filter, partial(fallsInAssetType, blpData, assetTypeStrings))
 	  , byCountryFilter(blpData, countryGroup)
 	)(positions)
 
@@ -185,54 +185,49 @@ def getTotalMarketValueFromAssetType( date
 	return \
 	compose(
 		partial(sumMarketValueInCurrency, date, reportingCurrency)
-	  , byAssetTypeFilterTuple(blpData, assetTypeStrings)
+	  , partial(filter, partial(fallsInAssetType, blpData, assetTypeStrings))
 	)(positions)
 
 
 
-def writeAssetAllocationCsv(portfolio, date, positions, blpData, reportingCurrency, countries, assetTypes):
+def writeAssetAllocationCsv(portfolio, date, mode, reportingCurrency, countryGroups, assetTypeTuples):
 	"""
+	[String] portfolio,
 	[String] date (yyyymmdd),
-	[Iterator] positions,
-	[Dictionary] blpData,
+	[String] mode,
+	[String] reportingCurrency
 	[List] countries, (e.g., ['China - Hong Kong', 'China - Mainland', 'Singapore'])
-	[Iterator] assetTypes (each assetType is a tuple like ('Fixed Income', 'Corporate', 'Investment Grade'))
+	[List] assetTypeTuples (each assetTypeTuple is like ('Fixed Income', 'Corporate', 'Investment Grade'))
 		
 		=> [String] output csv file name
 
 	Side effect: create a csv file.
-
-	NOTE: this function can take a few minutes to complete, especially when logging
-	level is set to DEBUG.
 	"""
-	assetTypeWithCountry = lambda countries, assetType: \
-		map(lambda el: (el, ) + assetType, countries)
-
-	assetTypeWithCountryToMarketValue = lambda positions, blpData, t: \
-		getTotalMarketValueFromCountrynAssetType(date, positions, blpData, reportingCurrency, *t)
-
-	assetTypeLineToValues = lambda positions, blpData, line: \
-		map( partial(assetTypeWithCountryToMarketValue, positions, blpData)
-		   , line)
+	assetTypeToValues = lambda d, countryGroups, assetypeTuple: \
+	compose(
+		partial(map, partial(sumMarketValueInCurrency, date, 'USD'))
+	  , lambda d: map(lambda cg: d[cg], countryGroups)
+	  , lambda assetypeTuple: d[assetypeTuple]
+	)(assetypeTuple)
 
 
 	return \
 	compose(
-		lambda lines: writeCsv( portfolio + '_asset_allocation_' + date + '.csv'
-							  , lines)
-	  , partial(map, partial(assetTypeLineToValues, list(positions), blpData))
-	  , partial(map, partial(assetTypeWithCountry, countries))
-	)(assetTypes)
+		partial(writeCsv, portfolio + '_asset_allocation_' + date + '.csv')
+	  , lambda d: map(partial(assetTypeToValues, d, countryGroups), assetTypeTuples)
+	  , partial(getAssetCountryAllocation, date, getBlpData(date, mode), assetTypeTuples, countryGroups)
+	  , getPortfolioPositions
+	)(portfolio, date, mode)
 
 
 
 def getAssetTypeAllocation(date, blpData, assetTypeTuples, positions):
 	"""
 	[String] date (yyyymmdd),
-	[Iterator] positions,
 	[Dictionary] blpData,
-	[Iterator] assetTypeTuples
-		=> [Dictionary] assetypeTuple -> lsit of positions matching with that 
+	[Iterator] assetTypeTuples,
+	[Iterator] positions
+		=> [Dictionary] assetypeTuple -> list of positions matching that 
 				asset type
 
 	Each position will be allocated to the first asset type it matches.
@@ -250,6 +245,51 @@ def getAssetTypeAllocation(date, blpData, assetTypeTuples, positions):
 				 , positions
 				 , {assetType: [] for assetType in assetTypeTuples}
 				 )
+
+
+
+def getCountryGroupAllocation(date, blpData, countryGroups, positions):
+	"""
+	[String] date (yyyymmdd),
+	[Dictionary] blpData,
+	[Iterator] countryGroups,
+	[Iterator] positions
+		=> [Dictionary] country group -> list of positions in that country
+			group
+
+	Each position will be allocated to the first asset type it matches.
+	"""
+	def accumulate(acc, el):
+		cg = toCountryGroup(blpData, el)
+		try:
+			acc[cg] = chain(acc[cg], [el])
+		except KeyError:
+			pass
+
+		return acc
+
+
+	return reduce( accumulate
+				 , positions
+				 , {cg: [] for cg in countryGroups}
+				 )
+
+
+
+def getAssetCountryAllocation(date, blpData, assetTypeTuples, countryGroups, positions):
+	"""
+	[String] date (yyyymmdd),
+	[Dictionary] blpData,
+	[Iterator] assetTypeTuples,
+	[List] countryGroups,
+	[Iterator] positions
+		=> [Dictionary] assetypeTuple -> [Dictionary] countryGroup -> List of
+			positions that fall into this asset type and this country group
+	"""
+	return \
+	valmap( partial(getCountryGroupAllocation, date, blpData, countryGroups)
+		  , getAssetTypeAllocation(date, blpData, assetTypeTuples, positions)
+		  )
 
 
 
@@ -403,29 +443,23 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
+	# A good way to show which countryGroups have holdings
 	# compose(
 	# 	print
-	#   , lambda positions: \
-	#   		writeAssetAllocationCsv( portfolio, date, positions, getBlpData(date)
-	#   							   , 'USD', *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
-	#   							   )
+	#   , partial(valmap, partial(sumMarketValueInCurrency, date, 'USD'))
+	#   , partial(groupbyToolz, partial(toCountryGroup, getBlpData(date, mode)))
+	#   , partial(filterfalse, partial(countryNotApplicable, getBlpData(date, mode)))
 	#   , getPortfolioPositions
 	# )(portfolio, date, mode)
 
 
-	blpData = getBlpData(date, mode)
-	positions = getPortfolioPositions(portfolio, date, mode)
-
-	# d = groupbyToolz( partial(toCountryGroup, blpData)
-	# 				, filterfalse(partial(countryNotApplicable, blpData), positions))
-	# print(valmap(partial(sumMarketValueInCurrency, date, 'USD'), d))
-
+	# Write the final asset allocation csv
 	compose(
 		print
-	  , partial(valmap, partial(sumMarketValueInCurrency, date, 'USD'))
-	  , partial( getAssetTypeAllocation, date, blpData
-	  		   , readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')[1])
-	)(positions)
+	  , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
+	  , lambda t: (t[0], list(t[1]))
+	  , readSfcTemplate
+	)('SFC_Asset_Allocation_Template.xlsx')
 
 
 
