@@ -21,15 +21,6 @@ def byCountryGroup(blpData, countryGroup, positions):
 	[Dictionary] blpData, [String] countryGroup, [Iterator] positions
 		=> [Iterator] positions from that country group
 	"""
-	# [Dictionary] blpData, [Dictionary] position => [String] country code
-	toCountryGroup = compose(
-		lambda code: \
-			getCountryMapping()[code] if code in getCountryMapping() else \
-			lognRaise('toCountryGroup(): unsupported country code: {0}'.format(code))
-	  , getCountryCode
-	)
-
-
 	matchCountryGroup = lambda blpData, countryGroup, position: \
 		countryGroup.lower().startswith(toCountryGroup(blpData, position).lower())
 
@@ -312,6 +303,18 @@ def getFundCountry(blpData, position):
 
 
 
+"""
+	[Dictionary] blpData, [Dictionary] position => [String] country group
+"""
+toCountryGroup = compose(
+	lambda code: \
+		getCountryMapping()[code] if code in getCountryMapping() else \
+		lognRaise('toCountryGroup(): unsupported country code: {0}'.format(code))
+  , getCountryCode
+)
+
+
+
 def getAverageRatingScoreSpecialCase(position):
 	"""
 	[Dictionary] position => [Float] score
@@ -501,6 +504,55 @@ def byAssetTypeOnlyFilterTuple(blpData, assetTypeStringTuple):
 	return \
 	partial(filter, lambda _: True) if len(assetTypeStringTuple) == 0 else \
 	partial(filter, partial(inner, blpData, assetTypeStringTuple))
+
+
+
+def fallsInAssetType(blpData, assetTypeTuple, position):
+	"""
+	[Tuple] assetTypeTuple, [Dictionary] position
+		=> [Bool] does the position fall into the asset type described by 
+					the asset type tuple
+
+	An asssetTypeTuple will consist of asset type and (optional) relevant
+	attributes, for example:
+
+	('Equity', 'Listed equities')
+
+	('Fixed Income', )
+
+	('Fixed Income', 'Corporate', 'Investment Grade')
+
+	('Fund', 'Exchange Traded Funds', 'SFC Authorized')
+	"""
+	assetTypeMatched = lambda t1, t2: \
+		False if len(t1) > len(t2) else \
+		all(map(lambda t: t[0].lower().startswith(t[1].lower()), zip(t1, t2)))
+
+
+	attributeFunctions = \
+	{ 'investment grade': partial(isInvestmentGrade, blpData)
+	, 'non-investment grade': lambda p: not isInvestmentGrade(blpData, p)
+	, 'financial': partial(isFinancial, blpData)
+	, 'non-financial': lambda p: not isFinancial(blpData, p)
+	, 'sfc authorized': partial(isSFCAuthorized, blpData)
+	, 'non-sfc authorized': lambda p: not isSFCAuthorized(blpData, p)
+	}
+
+
+	# [String] string => [Function] f if string matches one of the attributes
+	# else None
+	getAttributeFunction = compose(
+		partial(firstOf, lambda f: f != None)
+	  , lambda s: map( lambda key: attributeFunctions[key] if s.lower().startswith(key) else None
+	  		   		 , attributeFunctions.keys())
+	)
+
+
+	return \
+	True if len(assetTypeTuple) == 0 else \
+	fallsInAssetType(blpData, assetTypeTuple[:-1], position) and getAttributeFunction(assetTypeTuple[-1])(position) \
+	if getAttributeFunction(assetTypeTuple[-1]) != None else \
+	assetTypeMatched(assetTypeTuple, getAssetType(blpData, position))
 
 
 

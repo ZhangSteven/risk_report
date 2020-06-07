@@ -14,87 +14,10 @@ from functools import partial, reduce
 from itertools import chain, filterfalse, dropwhile, takewhile
 from toolz.functoolz import compose
 from toolz.itertoolz import groupby as groupbyToolz
-from toolz.dicttoolz import valmap
 from utils.utility import mergeDict, writeCsv
 from os.path import join
 import logging
 logger = logging.getLogger(__name__)
-
-
-
-def getLqaData(lines):
-	"""
-	[Iterator] lines => [Dictionary] security id -> LQA result
-
-	lines are from the LQA response (saved as Excel) from Bloomberg.
-	"""
-	toPosition = lambda headers, line: dict(zip(headers, line))
-
-	# Take the lines between 'START-OF-DATA' and 'END-OF-DATA'
-	takeInBetween = compose(
-		lambda t: takewhile(lambda L: L[0] != 'END-OF-DATA', t[1])
-	  , lambda lines: (pop(lines), lines)
-	  , partial(dropwhile, lambda L: len(L) == 0 or L[0] != 'START-OF-DATA')
-	)
-
-
-	def toNumber(x):
-		try:
-			return float(x)
-		except:
-			return x
-
-
-	return compose(
-		partial(map, partial(valmap, toNumber))
-	  , lambda t: map(partial(toPosition, t[0]), t[1])
-	  , lambda lines: (pop(lines), lines)
-	  , takeInBetween
-	)(lines)
-
-
-
-"""
-	[String] LQA response file => [Iterator] LQA position
-
-	Read Bloomberg LQA response file, see "samples/difLqa20200529.bbg"
-	for an example.
-"""
-def readLqaDataFromFile(file):
-	def fileToLines(file):
-		with open(file, 'r') as lqaFile:
-			for line in lqaFile:
-				yield line.strip()
-
-
-	return \
-	compose(
-	  	getLqaData
-	  , partial(map, lambda line: line.split('|'))
-	  , fileToLines
-	  , lambda file: lognContinue('readLqaDataFromFile(): {0}'.format(file), file)
-	)(file)
-
-
-
-def argumentsAsTuple(func):
-	"""
-	[Function] func => [Function] inner
-
-	NOTE: CANNOT be used if func takes only one argument.
-
-	A decorator function. When used to decorate another function (func), the
-	function then takes a tuple as a single argument, unpack it and then calls
-	func to return results.
-
-	This can be handy in composing functions, becuase return values of the 
-	previous function is passed to the next function in the form of a tuple 
-	when multiple results are returned.
-	"""
-	def inner(t):
-		return func(*t)
-
-	return inner
 
 
 

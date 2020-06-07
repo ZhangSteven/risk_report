@@ -18,7 +18,7 @@ from utils.utility import writeCsv, mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose, juxt
 from toolz.itertoolz import groupby as groupbyToolz
 from toolz.dicttoolz import valmap
-from functools import partial, reduce
+from functools import partial
 from itertools import filterfalse, chain, takewhile
 from datetime import datetime
 from os.path import join
@@ -226,33 +226,6 @@ def writeAssetAllocationCsv(portfolio, date, positions, blpData, reportingCurren
 
 
 
-def getAssetTypeAllocation(date, blpData, assetTypeTuples, positions):
-	"""
-	[String] date (yyyymmdd),
-	[Iterator] positions,
-	[Dictionary] blpData,
-	[Iterator] assetTypeTuples
-		=> [Dictionary] assetypeTuple -> lsit of positions matching with that 
-				asset type
-
-	Each position will be allocated to the first asset type it matches.
-	"""
-	def accumulate(acc, el):
-		for assetType in acc:
-			if fallsInAssetType(blpData, assetType, el):
-				acc[assetType] = chain(acc[assetType], [el])
-				break
-
-		return acc
-
-
-	return reduce( accumulate
-				 , positions
-				 , {assetType: [] for assetType in assetTypeTuples}
-				 )
-
-
-
 def getLiquidityDistribution(date, positions, lqaData, reportingCurrency):
 	"""
 	[String] date (yyyymmdd),
@@ -330,6 +303,11 @@ if __name__ == '__main__':
 	date = args.date
 
 
+	#####################################
+	#
+	# Asset allocation report
+	#
+	#####################################
 	# Step 1. Create a file containing the (id, idtype) columns.
 	# compose(
 	# 	print
@@ -412,22 +390,17 @@ if __name__ == '__main__':
 	#   , getPortfolioPositions
 	# )(portfolio, date, mode)
 
-
 	blpData = getBlpData(date, mode)
 	positions = getPortfolioPositions(portfolio, date, mode)
-
-	# d = groupbyToolz( partial(toCountryGroup, blpData)
-	# 				, filterfalse(partial(countryNotApplicable, blpData), positions))
+	countryGoups, assetTypes = readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	d = groupbyToolz( partial(toCountryGroup, blpData)
+					, filterfalse(partial(countryNotApplicable, blpData), positions))
 	# print(valmap(partial(sumMarketValueInCurrency, date, 'USD'), d))
-
 	compose(
 		print
-	  , partial(valmap, partial(sumMarketValueInCurrency, date, 'USD'))
-	  , partial( getAssetTypeAllocation, date, blpData
-	  		   , readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')[1])
+	  , partial(sumMarketValueInCurrency, date, 'USD')
+	  , partial(filter, partial(fallsInAssetType, blpData, ('Equity'))
 	)(positions)
-
-
 
 	#####################################
 	#

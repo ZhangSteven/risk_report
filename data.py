@@ -17,6 +17,7 @@ from utils.excel import getRawPositions, fileToLines, getRawPositionsFromFile
 from utils.iter import pop, firstOf
 from utils.utility import mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose
+from toolz.dicttoolz import valmap
 from functools import partial, lru_cache
 from itertools import filterfalse, takewhile, dropwhile, chain
 from datetime import datetime
@@ -37,15 +38,6 @@ getAssetTypeSpecialCaseData = lambda: loadAssetTypeSpecialCaseFromFile('AssetTyp
 
 
 """
-	[String] date (yyyymmdd), [String] mode
-		=> [Dictionary] meta data of the positions 
-"""
-getBlpData = lambda date, mode='production': \
-	loadBlpDataFromFile(getBlpDataFile(date, mode))
-
-
-
-"""
 	[String] portfolio, [String] date (yyyymmdd), [String] mode
 		=> [Iterator] positions of the portfolio 
 """
@@ -53,6 +45,75 @@ getPortfolioPositions = lambda portfolio, date, mode='production': \
 	getAllPositions(date, mode) if portfolio.lower() == 'all' else \
 	getGenevaPositions(portfolio, date, mode) if portfolio == '19437' else \
 	getBlpPositions(portfolio, date, mode)
+
+
+
+@lru_cache(maxsize=3)
+def getBlpData(date, mode='production'):
+	"""
+	[String] date (yyyymmdd), [String] mode
+		=> [Dictionary] meta data of the positions 
+	"""
+	getBlpDataFile = lambda date, mode: \
+		join(getInputDirectory(mode), 'BlpData_' + date + '.xlsx')
+
+
+	return \
+	compose(
+		dict
+	  , partial(map, lambda p: (p['ID'], p))
+	  , getRawPositionsFromFile
+	  , getBlpDataFile
+	)(date, mode)
+
+
+
+@lru_cache(maxsize=3)
+def getLqaData(date, mode='production'):
+	"""
+	[String] date (yyyymmdd), [String] mode
+		=> [Dictionary] id -> lqa data (dictionary)
+	"""
+	def fileToLines(file):
+		with open(file, 'r') as lqaFile:
+			for line in lqaFile:
+				yield line.strip()
+
+
+	getLqaDataFile = lambda date, mode: \
+		join(getInputDirectory(mode), 'LqaData_' + date + '.bbg')
+
+
+	toPosition = lambda headers, line: dict(zip(headers, line))
+
+	# Take the lines between 'START-OF-DATA' and 'END-OF-DATA'
+	takeInBetween = compose(
+		lambda t: takewhile(lambda L: L[0] != 'END-OF-DATA', t[1])
+	  , lambda lines: (pop(lines), lines)
+	  , partial(dropwhile, lambda L: len(L) == 0 or L[0] != 'START-OF-DATA')
+	)
+
+
+	def toNumber(x):
+		try:
+			return float(x)
+		except:
+			return x
+
+
+	return \
+	compose(
+		dict
+	  , partial(map, lambda p: (p['SECURITIES'], p))
+	  , partial(map, partial(valmap, toNumber))
+	  , lambda t: map(partial(toPosition, t[0]), t[1])
+	  , lambda lines: (pop(lines), lines)
+	  , takeInBetween
+	  , partial(map, lambda line: line.split('|'))
+	  , fileToLines
+	  , lambda file: lognContinue('getLqaData(): from file: {0}'.format(file), file)
+	  , getLqaDataFile
+	)(date, mode)
 
 
 
@@ -257,22 +318,6 @@ getBlpPositions = lambda portfolio, date, mode: \
 
 
 
-"""
-	[String] file => [Dictionary] data (ID -> [Dictioanry] blp information)
-"""
-loadBlpDataFromFile = compose(
-	dict
-  , partial(map, lambda p: (p['ID'], p))
-  , getRawPositionsFromFile
-)
-
-
-
-getBlpDataFile = lambda date, mode: \
-	join(getInputDirectory(mode), 'BlpData_' + date + '.xlsx')
-
-
-
 def getGenevaPositions(portfolio, date, mode):
 	"""
 	[String] portfolio, [String] date (yyyymmdd), [String] mode
@@ -309,6 +354,7 @@ def getGenevaPositions(portfolio, date, mode):
 		readGenevaInvestmentPositionFile
 	  , getGenevaInvestmentPositionFile
 	)(portfolio, date, mode)
+
 
 
 

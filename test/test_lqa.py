@@ -2,7 +2,7 @@
 # 
 
 import unittest2
-from risk_report.lqa import createLqaPositions, readLqaDataFromFile
+from risk_report.lqa import createLqaPositions
 from risk_report.data import getPositionDate
 from risk_report.utility import getCurrentDirectory
 from functools import partial
@@ -61,26 +61,6 @@ class TestLqa(unittest2.TestCase):
 		self.verifyCLOPosition(findByName('AEGON 5 ½ 04/11/48', clo))
 		self.verifyNonCLOPosition(findByName('CHINSC 8 ¾ 01/15/21', nonCLO))
 		self.verifyEquityPosition3(findByName('1038 HK', nonCLO))
-
-
-
-	def testReadLqaDataFromFile(self):
-		inputFile = join(getCurrentDirectory(), 'samples', 'difLqa20200529.bbg')
-		positions = list(readLqaDataFromFile(inputFile))
-		self.assertEqual(171, len(positions))
-		self.verifyLQAdata(positions[0])
-
-
-
-	def verifyLQAdata(self, p):
-		self.assertEqual(0, p['ERROR CODE'])
-		self.assertEqual('1299 HK Equity', p['SECURITIES'])
-		self.assertEqual('Developed APAC', p['LQA_LIQUIDITY_SECTOR'])
-		self.assertEqual(0.2, p['LQA_LIQUIDATION_HORIZON'])
-		self.assertAlmostEqual(0.003042, p['LQA_TGT_LIQUIDATION_COST'])
-		self.assertEqual(177200, p['LQA_TGT_LIQUIDATION_VOLUME'])
-		self.assertAlmostEqual(0.027887, p['LQA_LIQUIDATION_COST'])
-		self.assertEqual(3, p['LQA_TIME_TO_CASH'])
 
 
 
