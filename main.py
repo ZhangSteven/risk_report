@@ -51,7 +51,7 @@ def getLiquidityCategory(date, mode, blpData, lqaData, position):
 	toLiquiditCategory = lambda daysToCash: \
 		'L0' if daysToCash <= 3 else \
 		'L1' if daysToCash <= 7 else \
-		'L2' if daysToCash <= 10 else 'L4'
+		'L2' if daysToCash <= 10 else 'L3'
 
 
 	isLiquidAsset = lambda blpData, position: \
@@ -63,7 +63,7 @@ def getLiquidityCategory(date, mode, blpData, lqaData, position):
 
 
 	return \
-	'L0' if isLiquidAsset(blpData, position) else \
+	'L0' if isLiquidAsset(blpData, position) or getQuantity(position) == 0 else \
 	getLiquidityCategorySpecialCase(date, mode, blpData, position) \
 	if isLiquiditySpecialCase(date, mode, position) else \
 	toLiquiditCategory(lqaData[getIdnType(position)[0]]['LQA_TIME_TO_CASH'])
@@ -387,31 +387,36 @@ def getLiquidityDistribution(portfolio, date, mode, reportingCurrency):
 	[String] reportingCurrency
 		=> [Iterator] rows of liquidity distribution
 
-	Where each row consists of 3 items: liquidity category, total market value,
-	% of market value
+	Where each row consists of 3 items: liquidity category, total market value in
+	this category, % of total market value
 	"""
-	categories = ('L0', 'L1', 'L2', 'L3')
-
 	getMarketValueForEachCategory = compose(
-		list
-	  , lambda d: map( lambda c: sumMarketValueInCurrency(date, 'USD', d.get(c, []))
-			         , categories
+		lambda d: map( lambda key: ( key
+	  							   , sumMarketValueInCurrency(date, reportingCurrency, d[key])
+	  							   )
+			         , d.keys()
 			         )
 	  , partial( groupbyToolz
 	  		   , partial( getLiquidityCategory, date, mode
 	  		   			, getBlpData(date, mode), getLqaData(date, mode))
 	  		   )
-	  , partial(filterfalse, lambda p: getQuantity(p) == 0)
 	)
+
+
+	checkTotal = lambda tuples: \
+		tuples if abs(sum(map(lambda t: t[2], tuples)) - 1.0) < 0.0000001 else \
+		lognRaise('getLiquidityDistribution(): sum of percentage is not 1.0')
 
 
 	return \
 	compose(
-		lambda t: map( lambda ct: (ct[0], ct[1], ct[1]/t[0])
-					 , zip(categories, t[1])
-					 )
-	  , lambda L: (sum(L), L)
-	  , getMarketValueForEachCategory
+		checkTotal
+	  , sorted
+	  , lambda t: map(lambda ct: (ct[0], ct[1], ct[1]/t[1]), t[0])
+	  , lambda positions: ( getMarketValueForEachCategory(positions)
+	  					  , sumMarketValueInCurrency(date, reportingCurrency, positions)
+	  					  )
+	  , list
 	)(getPortfolioPositions(portfolio, date, mode))
 
 
