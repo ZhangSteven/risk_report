@@ -9,10 +9,12 @@ from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 							, isRepo, isFxForward, getIdnType, getAssetType \
 							, getAverageRatingScore, getCountryCode \
 							, byCountryFilter, countryNotApplicable \
-							, toCountryGroup, fallsInAssetType
+							, toCountryGroup, fallsInAssetType \
+							, getAverageRatingScore
 from risk_report.sfc import readSfcTemplate
 from risk_report.data import getFX, getPortfolioPositions, getBlpData, getMarketValue \
-							, getBookCurrency, getLqaData
+							, getBookCurrency, getLqaData, isCash, getLiquiditySpecialCaseData \
+							, getQuantity
 from utils.iter import pop
 from utils.utility import writeCsv, mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose, juxt
@@ -27,10 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 
-def getLiquidityCategory(lqaData, position):
+def getLiquidityCategory(date, mode, blpData, lqaData, position):
 	"""
+	[String] date (yyyymmdd),
 	[Dictionary] lqaData,
-	[Dictionary] position 
+	[Dictionary] position
 		=> [Int] liquidity category
 	
 	Liquidity Category:
@@ -38,9 +41,92 @@ def getLiquidityCategory(lqaData, position):
 	L0: highly liquid
 	L1: medium liquid
 	L2: low liquid
-	L3: illiquid 
+	L3: illiquid
 	"""
-	return 'L0'
+	# import sys
+	# print(position)
+	# sys.exit(0)
+	logger.debug('getLiquidityCategory(): {0}'.format(getIdnType(position)))
+
+	toLiquiditCategory = lambda daysToCash: \
+		'L0' if daysToCash <= 3 else \
+		'L1' if daysToCash <= 7 else \
+		'L2' if daysToCash <= 10 else 'L4'
+
+
+	isLiquidAsset = lambda blpData, position: \
+		True if getAssetType(blpData, position) == ('Cash', ) else False
+
+
+	isLiquiditySpecialCase = lambda date, mode, position: \
+		getIdnType(position)[0] in getLiquiditySpecialCaseData(date, mode)
+
+
+	return \
+	'L0' if isLiquidAsset(blpData, position) else \
+	getLiquidityCategorySpecialCase(date, mode, blpData, position) \
+	if isLiquiditySpecialCase(date, mode, position) else \
+	toLiquiditCategory(lqaData[getIdnType(position)[0]]['LQA_TIME_TO_CASH'])
+
+
+
+def getLiquidityCategorySpecialCase(date, mode, blpData, position):
+	"""
+	[String] date (yyyymmdd),
+	[Dictionary] lqaData,
+	[Dictionary] position
+		=> [Int] liquidity category
+	"""
+	logger.debug('getLiquidityCategorySpecialCase(): {0}'.format(getIdnType(position)))
+
+
+	# [String] date, [String] mode => [Int] score
+	maturityScore = compose(
+		lambda yearToMaturity: 4 if yearToMaturity < 1 else \
+			3 if yearToMaturity < 3 else \
+			2 if yearToMaturity < 5 else 1
+	  , lambda delta: delta.days // 365
+	  , lambda maturityDate: maturityDate - datetime.strptime(date, '%Y%m%d')
+	  , lambda d: d[getIdnType(position)[0]]['CALC_MATURITY']
+	  , getLiquiditySpecialCaseData
+	)
+
+
+	# [Dictionary] blpData, [Dictionary] position => [Int] score
+	ratingScore = compose(
+		lambda score: 4 if score >= 15 else \
+			3 if score >= 12 else \
+			2 if score >= 6 else 1
+	  , getAverageRatingScore
+	)
+
+
+	# [String] date, [String] mode => [Int] score
+	concentrationScore = compose(
+		lambda percentage: 4 if percentage < 5 else \
+			3 if percentage < 10 else \
+			2 if percentage < 20 else 1
+	  , lambda outStandingAmount: getQuantity(position)/outStandingAmount * 100
+	  , lambda d: d[getIdnType(position)[0]]['AMT_OUTSTANDING']
+	  , getLiquiditySpecialCaseData
+	)
+
+
+	liquidityRating = lambda x: \
+		'L0' if x >= 12 else \
+		'L1' if x >=  9 else \
+		'L2' if x >=  6 else 'L3'
+
+
+	return \
+	compose(
+		liquidityRating
+	  , lambda x, y, z: x + y + z
+	)( maturityScore(date, mode)
+	 , ratingScore(blpData, position)
+	 , concentrationScore(date, mode)
+	 )
+
 
 
 
@@ -293,11 +379,11 @@ def getAssetCountryAllocation(date, blpData, assetTypeTuples, countryGroups, pos
 
 
 
-def getLiquidityDistribution(date, positions, lqaData, reportingCurrency):
+def getLiquidityDistribution(portfolio, date, mode, reportingCurrency):
 	"""
+	[String] portfolio
 	[String] date (yyyymmdd),
-	[Iterator] positions,
-	[Dictionary] lqaData,
+	[String] mode
 	[String] reportingCurrency
 		=> [Iterator] rows of liquidity distribution
 
@@ -311,7 +397,11 @@ def getLiquidityDistribution(date, positions, lqaData, reportingCurrency):
 	  , lambda d: map( lambda c: sumMarketValueInCurrency(date, 'USD', d.get(c, []))
 			         , categories
 			         )
-	  , partial(groupbyToolz, partial(getLiquidityCategory, lqaData))
+	  , partial( groupbyToolz
+	  		   , partial( getLiquidityCategory, date, mode
+	  		   			, getBlpData(date, mode), getLqaData(date, mode))
+	  		   )
+	  , partial(filterfalse, lambda p: getQuantity(p) == 0)
 	)
 
 
@@ -322,7 +412,7 @@ def getLiquidityDistribution(date, positions, lqaData, reportingCurrency):
 					 )
 	  , lambda L: (sum(L), L)
 	  , getMarketValueForEachCategory
-	)(positions)
+	)(getPortfolioPositions(portfolio, date, mode))
 
 
 
@@ -414,19 +504,16 @@ if __name__ == '__main__':
 	
 
 	"""
-	Step 5. Check if all securities except cash and FX forwards can get
-	country code.
+	Step 5. Check if all securities get	country code and map to a country group,
+	except those not applicable, e.g., cash and FX forwards.
 	"""
 	# compose(
 	# 	print
-	#   , lambda positions: writeCsv( portfolio + '_countries_' + date + '.csv'
-	# 					  		  , chain( [('Country Code', )]
-	# 					  		  		 , map(lambda s: [s], positions))
-	# 					  		  )
-	#   , partial(map, partial(getCountryCode, getBlpData(date)))
-	#   , partial(filterfalse, partial(countryNotApplicable, getBlpData(date)))
+	#   , partial(valmap, partial(sumMarketValueInCurrency, date, 'USD'))
+	#   , partial(groupbyToolz, partial(toCountryGroup, getBlpData(date, mode)))
+	#   , partial(filterfalse, partial(countryNotApplicable, getBlpData(date, mode)))
 	#   , getPortfolioPositions
-	# )(portfolio, date)
+	# )(portfolio, date, mode)
 
 
 	"""
@@ -443,23 +530,13 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	# A good way to show which countryGroups have holdings
+	# Write the final asset allocation csv
 	# compose(
 	# 	print
-	#   , partial(valmap, partial(sumMarketValueInCurrency, date, 'USD'))
-	#   , partial(groupbyToolz, partial(toCountryGroup, getBlpData(date, mode)))
-	#   , partial(filterfalse, partial(countryNotApplicable, getBlpData(date, mode)))
-	#   , getPortfolioPositions
-	# )(portfolio, date, mode)
-
-
-	# Write the final asset allocation csv
-	compose(
-		print
-	  , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
-	  , lambda t: (t[0], list(t[1]))
-	  , readSfcTemplate
-	)('SFC_Asset_Allocation_Template.xlsx')
+	#   , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
+	#   , lambda t: (t[0], list(t[1]))
+	#   , readSfcTemplate
+	# )('SFC_Asset_Allocation_Template.xlsx')
 
 
 
@@ -468,15 +545,28 @@ if __name__ == '__main__':
 	# Liquidit report
 	#
 	#####################################
-	# print(
-	# 	writeCsv( portfolio + '_liquidity_' + date + '.csv'
-	# 			, chain( [('Category', 'Total', 'Percentage')]
-	# 				   , getLiquidityDistribution( 
-	# 				   		date
-	# 					  , getPortfolioPositions(portfolio, date, mode)
-	# 					  , getLqaData(date, mode)
-	# 					  , 'USD'
-	# 					 )
-	# 				   )
-	# 			)
-	# )
+
+	# Step 1. Search for any securities that do not have a valid response from
+	# the LQA response file.
+	# compose(
+	# 	print
+	#   , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
+	#   , lambda rows: chain([('securities', )], rows)
+	#   , partial(map, lambda p: (p['SECURITIES'], ))
+	#   , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_TIME_TO_CASH'] == 'N.A.'
+	# 				  	, d.values())
+	#   , getLqaData
+	# )(date, mode)
+
+
+	# Step 2. Generate the liquidity special case file, which contains information
+	# needed to determine their liquidity bucket.
+
+
+	# Step 3. Generate liquidity report.
+	compose(
+		print
+	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	  , getLiquidityDistribution
+	)(portfolio, date, mode, 'USD')

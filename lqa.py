@@ -325,7 +325,7 @@ if __name__ == '__main__':
 
 	writer = buildLqaRequestOldStyle if args.old else buildLqaRequest
 
-	# Create CLO and non-CLO separately
+	# Choice 1: Create CLO and non-CLO separately
 	# compose(
 	# 	lambda t: ( writer('masterlist_nonCLO', args.date, t[0])
 	# 		  	  , writer('masterlist_CLO', args.date, t[1])
@@ -334,7 +334,7 @@ if __name__ == '__main__':
 	# )(args.portfolio, args.date)
 
 
-	# Create one combined masterlist, use this if you want to generate
+	# Choice 2: Create one combined masterlist, use this if you want to generate
 	# LQA request for just one portfolio, say 19437.
 	compose(
 		partial(writer, 'masterlist', args.date)

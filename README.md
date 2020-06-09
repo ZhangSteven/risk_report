@@ -11,6 +11,12 @@ Purpose of this application:
 
 ## To Do
 
+1. Once confirmed, add test case for 19437 asset allocation as of 2020-05-29 and 19437 liquidity as of 2020-05-29.
+
+
+
+## To Be Confirmed
+
 1. What is the country code if a security's geographical region is global, e.g., ICSUSPI ID Equity and JPMULCD LX Equity?
 
 2. What asset type should we put REPO into?

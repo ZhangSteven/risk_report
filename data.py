@@ -36,6 +36,11 @@ getRatingScoreMapping = lambda: loadRatingScoreMappingFromFile('RatingScore.xlsx
 getAssetTypeSpecialCaseData = lambda: loadAssetTypeSpecialCaseFromFile('AssetType_SpecialCase.xlsx')
 
 
+""" [String] date (yyyymmdd), [String] mode => [Dictionary] id -> [Dictionary] data """
+getLiquiditySpecialCaseData = lambda date, mode: \
+	loadLiquiditySpecialCaseFromFile(getLiquiditySpecialCaseFile(date, mode))
+
+
 
 """
 	[String] portfolio, [String] date (yyyymmdd), [String] mode
@@ -357,7 +362,6 @@ def getGenevaPositions(portfolio, date, mode):
 
 
 
-
 @lru_cache(maxsize=3)
 def loadRatingScoreMappingFromFile(file):
 	"""
@@ -424,6 +428,37 @@ def loadAssetTypeSpecialCaseFromFile(file):
 	  , fileToLines
 	)(file)
 
+
+
+getLiquiditySpecialCaseFile = lambda date, mode: \
+	join('samples', 'Liquidity_SpecialCase_' + date + '.xlsx') if mode == 'test' \
+	else join('reports', 'Liquidity_SpecialCase_' + date + '.xlsx')
+
+
+
+@lru_cache(maxsize=3)
+def loadLiquiditySpecialCaseFromFile(file):
+	"""
+	[String] file => [Dictionary] id -> [Dictionary] liquidity data
+	"""
+	toDate = lambda x: \
+		fromExcelOrdinal(x) if isinstance(x, float) else \
+		datetime.strptime(x, '%m/%d/%Y')
+
+
+	updatePosition = lambda position: mergeDict(
+		position
+	  , {'CALC_MATURITY': toDate(position['CALC_MATURITY'])}
+	)
+
+
+	return \
+	compose(
+		dict
+	  , partial(map, lambda p: (p['ID'], p))
+	  , partial(map, updatePosition)
+	  , getRawPositionsFromFile
+	)(file)
 
 
 
