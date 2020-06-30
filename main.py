@@ -291,7 +291,7 @@ def writeAssetAllocationCsv(portfolio, date, mode, reportingCurrency, countryGro
 	"""
 	assetTypeToValues = lambda d, countryGroups, assetypeTuple: \
 	compose(
-		partial(map, partial(sumMarketValueInCurrency, date, 'USD'))
+		partial(map, partial(sumMarketValueInCurrency, date, reportingCurrency))
 	  , lambda d: map(lambda cg: d[cg], countryGroups)
 	  , lambda assetypeTuple: d[assetypeTuple]
 	)(assetypeTuple)
@@ -432,7 +432,6 @@ def lognRaise(msg):
 
 
 
-
 if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
@@ -525,7 +524,7 @@ if __name__ == '__main__':
 	Step 6. Write a output csv with the country groups and asset types in the
 	SFC template file. Update that template file if necessary.
 	"""
-	# Get cash total (change type to 'Foreign exchange derivatives' if necessary)
+	# Get cash total (change type to 'Foreign exchange derivatives' for FX forward)
 	# compose(
 	# 	print
 	#   , lambda positions: \
@@ -536,13 +535,54 @@ if __name__ == '__main__':
 
 
 	# Write the final asset allocation csv
-	# compose(
-	# 	print
-	#   , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
-	#   , lambda t: (t[0], list(t[1]))
-	#   , readSfcTemplate
-	# )('SFC_Asset_Allocation_Template.xlsx')
+	compose(
+		print
+	  , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
+	  , lambda t: (t[0], list(t[1]))
+	  , readSfcTemplate
+	)('SFC_Asset_Allocation_Template.xlsx')
 
+
+	################################################################
+	# Debug Section
+	################################################################
+	# def showPositions(L):
+	# 	for x in L:
+	# 		print(getIdnType(x)[0], getMarketValue(x))
+
+	# def showKeys(d):
+	# 	for key in d:
+	# 		print(key)
+
+	# Show all asset types except the cash and FX forward
+	# compose(
+	# 	showKeys
+	#   , lambda t: getAssetCountryAllocation(date, getBlpData(date, mode), t[2], t[1], t[0])
+	#   , lambda t: (t[0], t[1], list(t[2]))
+	#   , lambda portfolio: ( getPortfolioPositions(portfolio, date, mode)
+	#   					  , *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	#   					  )
+	# )(portfolio)
+
+
+	# Show the positions with a particular asset type and country group
+	# compose(
+	# 	showPositions
+	#   , lambda d: d[('Fixed income (Note 2)', 'Corporate (Note 4)', 'Non-Investment Grade (Note 3)', 'Financial Institution')]['China - Mainland']
+	#   , lambda t: getAssetCountryAllocation(date, getBlpData(date, mode), t[2], t[1], t[0])
+	#   , lambda t: (t[0], t[1], list(t[2]))
+	#   , lambda portfolio: ( getPortfolioPositions(portfolio, date, mode)
+	#   					  , *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	#   					  )
+	# )(portfolio)
+
+
+	# Show cash
+	# compose(
+	# 	showPositions
+	#   , partial(filter, partial(fallsInAssetType, getBlpData(date, mode), ('Cash',)))
+	#   , lambda portfolio: getPortfolioPositions(portfolio, date, mode)
+	# )(portfolio)
 
 
 	#####################################
@@ -569,9 +609,9 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	compose(
-		print
-	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	  , getLiquidityDistribution
-	)(portfolio, date, mode, 'USD')
+	# compose(
+	# 	print
+	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	#   , getLiquidityDistribution
+	# )(portfolio, date, mode, 'USD')
