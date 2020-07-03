@@ -44,8 +44,11 @@ def getLiquidityCategory(date, mode, blpData, lqaData, position):
 	L3: illiquid
 	"""
 	# import sys
-	# print(position)
+	# for x in lqaData:
+	# 	print(x)
+
 	# sys.exit(0)
+
 	logger.debug('getLiquidityCategory(): {0}'.format(getIdnType(position)))
 
 	toLiquiditCategory = lambda daysToCash: \
@@ -379,12 +382,14 @@ def getAssetCountryAllocation(date, blpData, assetTypeTuples, countryGroups, pos
 
 
 
-def getLiquidityDistribution(portfolio, date, mode, reportingCurrency):
+def getLiquidityDistribution(portfolio, date, mode, reportingCurrency, separator='|'):
 	"""
 	[String] portfolio
 	[String] date (yyyymmdd),
 	[String] mode
 	[String] reportingCurrency
+	[String] separator
+
 		=> [Iterator] rows of liquidity distribution
 
 	Where each row consists of 3 items: liquidity category, total market value in
@@ -398,7 +403,8 @@ def getLiquidityDistribution(portfolio, date, mode, reportingCurrency):
 			         )
 	  , partial( groupbyToolz
 	  		   , partial( getLiquidityCategory, date, mode
-	  		   			, getBlpData(date, mode), getLqaData(date, mode))
+	  		   			, getBlpData(date, mode)
+	  		   			, getLqaData(date, mode, separator))
 	  		   )
 	)
 
@@ -535,12 +541,12 @@ if __name__ == '__main__':
 
 
 	# Write the final asset allocation csv
-	compose(
-		print
-	  , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
-	  , lambda t: (t[0], list(t[1]))
-	  , readSfcTemplate
-	)('SFC_Asset_Allocation_Template.xlsx')
+	# compose(
+	# 	print
+	#   , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
+	#   , lambda t: (t[0], list(t[1]))
+	#   , readSfcTemplate
+	# )('SFC_Asset_Allocation_Template.xlsx')
 
 
 	################################################################
@@ -609,9 +615,9 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	# compose(
-	# 	print
-	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	#   , getLiquidityDistribution
-	# )(portfolio, date, mode, 'USD')
+	compose(
+		print
+	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	  , getLiquidityDistribution
+	)(portfolio, date, mode, 'USD')

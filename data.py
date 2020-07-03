@@ -2,7 +2,7 @@
 #
 # Functions related to data retrieving are grouped here.
 # 
-from risk_report.utility import getInputDirectory
+from risk_report.utility import getInputDirectory, getDataDirectory
 from risk_report.blp import getBlpPortfolioId, getBlpPositionDate, getBlpMarketValue \
 							, getBlpBookCurrency, getBlpPortfolioId, getBlpIdnType \
 							, getBlpQuantity, isBlpPrivateSecurity, isBlpRepo \
@@ -74,7 +74,7 @@ def getBlpData(date, mode='production'):
 
 
 @lru_cache(maxsize=3)
-def getLqaData(date, mode='production'):
+def getLqaData(date, mode='production', separator='|'):
 	"""
 	[String] date (yyyymmdd), [String] mode
 		=> [Dictionary] id -> lqa data (dictionary)
@@ -99,22 +99,45 @@ def getLqaData(date, mode='production'):
 	)
 
 
-	def toNumber(x):
+	"""
+	The below functions: 
+
+	1. stipDoubleQuote()
+	2. toNumberOrStripQuote()
+	3. updateSecurityId()
+
+	They are used to clean the data. Because sometimes the string data are 
+	enclosed by a pair of double quotes, we need to removed. The float numbers
+	may be read as string and sometimes we have security ids like "XS1234567890 PerfShs"
+	and we need to take only the first part.
+	"""
+	stipDoubleQuote = lambda s: s.replace('"', '')
+
+
+	def toNumberOrStripQuote(x):
 		try:
 			return float(x)
 		except:
-			return x
+			return stipDoubleQuote(x)
+
+
+	def updateSecurityId(p):
+		if len(p['SECURITIES'].split()[0]) == 12: # it's ISIN
+			return mergeDict(p, {'SECURITIES': p['SECURITIES'].split()[0]})
+		else:
+			return p
 
 
 	return \
 	compose(
 		dict
 	  , partial(map, lambda p: (p['SECURITIES'], p))
-	  , partial(map, partial(valmap, toNumber))
+	  , partial(map, updateSecurityId)
+	  , partial(map, partial(valmap, toNumberOrStripQuote))
 	  , lambda t: map(partial(toPosition, t[0]), t[1])
-	  , lambda lines: (pop(lines), lines)
+	  , lambda lines: (list(map(stipDoubleQuote, pop(lines))), lines)
 	  , takeInBetween
-	  , partial(map, lambda line: line.split('|'))
+	  , partial(map, lambda line: line.split(separator))
 	  , fileToLines
 	  , lambda file: lognContinue('getLqaData(): from file: {0}'.format(file), file)
 	  , getLqaDataFile
@@ -376,6 +399,7 @@ def loadRatingScoreMappingFromFile(file):
 	  , lambda t: t[1]
 	  , lambda lines: (pop(lines), lines)
 	  , fileToLines
+  	  , partial(join, getDataDirectory())
 	)(file)
 
 
@@ -393,6 +417,7 @@ def loadCountryGroupMappingFromFile(file):
 	  , lambda t: t[1]
 	  , lambda lines: (pop(lines), lines)
 	  , fileToLines
+  	  , partial(join, getDataDirectory())
 	)(file)
 
 
@@ -426,13 +451,13 @@ def loadAssetTypeSpecialCaseFromFile(file):
 	  , partial(map, updatePosition)
 	  , getRawPositions
 	  , fileToLines
+	  , partial(join, getDataDirectory())
 	)(file)
 
 
 
 getLiquiditySpecialCaseFile = lambda date, mode: \
-	join('samples', 'Liquidity_SpecialCase_' + date + '.xlsx') if mode == 'test' \
-	else join('reports', 'Liquidity_SpecialCase_' + date + '.xlsx')
+	join(getInputDirectory(mode), 'Liquidity_SpecialCase_' + date + '.xlsx')
 
 
 

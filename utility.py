@@ -36,3 +36,8 @@ def getInputDirectory(mode):
 		return loadConfigFile('risk_report.config')['Test']['inputDirectory']
 	else:
 		return loadConfigFile('risk_report.config')['Production']['inputDirectory']
+
+
+
+def getDataDirectory():
+	return loadConfigFile('risk_report.config')['Data']['directory']
