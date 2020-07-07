@@ -174,6 +174,7 @@ def getFX(date, targetCurrency):
 	  		   , lambda p: toDateString(p['Date']) == date and p['Reporting Currency'] == targetCurrency
 	  		   )
 	  , getRawPositionsFromFile
+	  , partial(join, getDataDirectory())
 	)('FX.xlsx')
 
 

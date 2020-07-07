@@ -615,9 +615,9 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	compose(
-		print
-	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	  , getLiquidityDistribution
-	)(portfolio, date, mode, 'USD')
+	# compose(
+	# 	print
+	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	#   , getLiquidityDistribution
+	# )(portfolio, date, mode, 'USD')
