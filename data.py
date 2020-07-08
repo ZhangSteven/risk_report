@@ -145,6 +145,11 @@ def getLqaData(date, mode='production', separator='|'):
 
 
 
+""" [Float] excel date value => [String] date string (yyyymmdd) """
+toDateString = lambda x: datetime.strftime(fromExcelOrdinal(x), '%Y%m%d')
+
+
+
 @lru_cache(maxsize=3)
 def getFX(date, targetCurrency):
 	"""
@@ -161,10 +166,6 @@ def getFX(date, targetCurrency):
 
 	d['HKD'] = 7.7520 (USDHKD as of 20200430)
 	"""
-	toDateString = lambda x: \
-		datetime.strftime(fromExcelOrdinal(x), '%Y%m%d')
-
-
 	return \
 	compose(
 		partial(mergeDict, {targetCurrency: 1.0})
@@ -176,6 +177,25 @@ def getFX(date, targetCurrency):
 	  , getRawPositionsFromFile
 	  , partial(join, getDataDirectory())
 	)('FX.xlsx')
+
+
+
+def getLiquidityOverride():
+	"""
+	Returns: [Dictionary] (date, securityId) -> [String] liquidity category
+
+	Provide the final override of the liquidity
+	"""
+	return \
+	compose(
+		dict
+	  , partial( map
+	  		   , lambda p: ( (toDateString(p['Date']), p['SecurityId'])
+	  		   			   , p['Liquidity']
+	  					   ))
+	  , getRawPositionsFromFile
+	  , partial(join, getDataDirectory())
+	)('Liquidity_Override.xlsx')
 
 
 
