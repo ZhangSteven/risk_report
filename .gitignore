@@ -3,6 +3,10 @@ __pycache__/
 test/__pycache__/
 
 
+# the config file
+risk_report.config
+
+
 # ignore the log file
 logs/
 
