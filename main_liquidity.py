@@ -49,9 +49,9 @@ def getLiquidityCategorySpecialCaseBond(date, blpData, position):
 
 
     liquidityRating = lambda x: \
-        'L0' if x >= 12 else \
-        'L1' if x >=  9 else \
-        'L2' if x >=  6 else 'L3'
+        'L0' if x > 9 else \
+        'L1' if x > 6 else \
+        'L2' if x > 3 else 'L3'
 
 
     return liquidityRating(
