@@ -530,7 +530,9 @@ if __name__ == '__main__':
 	Step 6. Write a output csv with the country groups and asset types in the
 	SFC template file. Update that template file if necessary.
 	"""
-	# Get cash total (change type to 'Foreign exchange derivatives' for FX forward)
+	# Run this section twice to get: 
+	# 1. cash total 
+	# 2. fx forward (change type to 'Foreign exchange derivatives')
 	# compose(
 	# 	print
 	#   , lambda positions: \
@@ -615,9 +617,9 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	# compose(
-	# 	print
-	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	#   , getLiquidityDistribution
-	# )(portfolio, date, mode, 'USD')
+	compose(
+		print
+	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	  , getLiquidityDistribution
+	)(portfolio, date, mode, 'USD')

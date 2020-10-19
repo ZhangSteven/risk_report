@@ -5,6 +5,7 @@
 from risk_report.asset import getAverageRatingScore
 from risk_report.data import getQuantity
 from toolz.functoolz import compose
+from functools import partial
 from datetime import datetime
 import logging
 logger = logging.getLogger(__name__)
@@ -236,15 +237,15 @@ if __name__ == '__main__':
 
 	# Step 1. Search for any securities that do not have a valid response from
 	# the LQA response file.
-	# compose(
-	# 	print
-	#   , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
-	#   , lambda rows: chain([('securities', )], rows)
-	#   , partial(map, lambda p: (p['SECURITIES'], ))
-	#   , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_TIME_TO_CASH'] == 'N.A.'
-	# 				  	, d.values())
-	#   , getLqaData
-	# )(date, mode)
+	compose(
+		print
+	  , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
+	  , lambda rows: chain([('securities', )], rows)
+	  , partial(map, lambda p: (p['SECURITIES'], ))
+	  , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_TIME_TO_CASH'] == 'N.A.'
+					  	, d.values())
+	  , getLqaData
+	)(date, mode)
 
 
 	# Step 2. Generate the liquidity special case file, which contains information
