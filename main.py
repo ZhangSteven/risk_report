@@ -116,19 +116,16 @@ def getLiquidityCategorySpecialCase(date, mode, blpData, position):
 
 
 	liquidityRating = lambda x: \
-		'L0' if x >= 12 else \
-		'L1' if x >=  9 else \
-		'L2' if x >=  6 else 'L3'
+		'L0' if x > 9 else \
+		'L1' if x > 6 else \
+		'L2' if x > 3 else 'L3'
 
 
-	return \
-	compose(
-		liquidityRating
-	  , lambda x, y, z: x + y + z
-	)( maturityScore(date, mode)
-	 , ratingScore(blpData, position)
-	 , concentrationScore(date, mode)
-	 )
+	return liquidityRating(
+			  	maturityScore(date, mode) \
+			  + ratingScore(blpData, position) \
+			  + concentrationScore(date, mode)
+	 	   )
 
 
 
@@ -617,25 +614,25 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	# compose(
-	# 	print
-	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	#   , getLiquidityDistribution
-	# )(portfolio, date, mode, 'USD')
+	compose(
+		print
+	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	  , getLiquidityDistribution
+	)(portfolio, date, mode, 'USD')
 
 
 	# For debugging purposes, indicate liquidity for each position
-	compose(
-		print
-	  , partial(writeCsv, portfolio + '_liquidity_position_' + date + '.csv')
-	  , partial( map
-	  		   , lambda p: ( getIdnType(p)[0]
-	  		   			   , getLiquidityCategory( date
-	  		   			   						 , mode
-	  		   			   						 , getBlpData(date, mode)
-	  		   			   						 , getLqaData(date, mode)
-	  		   			   						 , p)
-	  		   			   , marketValueWithFX(getFX(date, 'USD'), p)
-	  		   			   ))
-	)(getPortfolioPositions(portfolio, date, mode))
+	# compose(
+	# 	print
+	#   , partial(writeCsv, portfolio + '_liquidity_position_' + date + '.csv')
+	#   , partial( map
+	#   		   , lambda p: ( getIdnType(p)[0]
+	#   		   			   , getLiquidityCategory( date
+	#   		   			   						 , mode
+	#   		   			   						 , getBlpData(date, mode)
+	#   		   			   						 , getLqaData(date, mode)
+	#   		   			   						 , p)
+	#   		   			   , marketValueWithFX(getFX(date, 'USD'), p)
+	#   		   			   ))
+	# )(getPortfolioPositions(portfolio, date, mode))
