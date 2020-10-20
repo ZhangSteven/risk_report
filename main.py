@@ -69,7 +69,7 @@ def getLiquidityCategory(date, mode, blpData, lqaData, position):
 	'L0' if isLiquidAsset(blpData, position) or getQuantity(position) == 0 else \
 	getLiquidityCategorySpecialCase(date, mode, blpData, position) \
 	if isLiquiditySpecialCase(date, mode, position) else \
-	toLiquiditCategory(lqaData[getIdnType(position)[0]]['LQA_TIME_TO_CASH'])
+	toLiquiditCategory(lqaData[getIdnType(position)[0]]['LQA_LIQUIDATION_HORIZON'])
 
 
 
