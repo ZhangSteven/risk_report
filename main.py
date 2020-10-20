@@ -14,7 +14,7 @@ from risk_report.asset import isPrivateSecurity, isCash, isMoneyMarket \
 from risk_report.sfc import readSfcTemplate
 from risk_report.data import getFX, getPortfolioPositions, getBlpData, getMarketValue \
 							, getBookCurrency, getLqaData, isCash, getLiquiditySpecialCaseData \
-							, getQuantity
+							, getQuantity, getLiquidityOverrideOnDate
 from utils.iter import pop
 from utils.utility import writeCsv, mergeDict, fromExcelOrdinal
 from toolz.functoolz import compose, juxt
@@ -43,18 +43,12 @@ def getLiquidityCategory(date, mode, blpData, lqaData, position):
 	L2: low liquid
 	L3: illiquid
 	"""
-	# import sys
-	# for x in lqaData:
-	# 	print(x)
-
-	# sys.exit(0)
-
 	logger.debug('getLiquidityCategory(): {0}'.format(getIdnType(position)))
 
-	toLiquiditCategory = lambda daysToCash: \
-		'L0' if daysToCash <= 3 else \
-		'L1' if daysToCash <= 7 else \
-		'L2' if daysToCash <= 10 else 'L3'
+	toLiquiditCategory = lambda liquidityHorizon: \
+		'L0' if liquidityHorizon <= 3 else \
+		'L1' if liquidityHorizon <= 7 else \
+		'L2' if liquidityHorizon <= 10 else 'L3'
 
 
 	isLiquidAsset = lambda blpData, position: \
@@ -65,8 +59,14 @@ def getLiquidityCategory(date, mode, blpData, lqaData, position):
 		getIdnType(position)[0] in getLiquiditySpecialCaseData(date, mode)
 
 
+	hasLiquidityOverride = lambda date, position: \
+		getIdnType(position)[0] in getLiquidityOverrideOnDate(date)
+
+
 	return \
 	'L0' if isLiquidAsset(blpData, position) or getQuantity(position) == 0 else \
+	getLiquidityOverrideOnDate(date)[getIdnType(position)[0]] \
+	if hasLiquidityOverride(date, position) else \
 	getLiquidityCategorySpecialCase(date, mode, blpData, position) \
 	if isLiquiditySpecialCase(date, mode, position) else \
 	toLiquiditCategory(lqaData[getIdnType(position)[0]]['LQA_LIQUIDATION_HORIZON'])
@@ -606,7 +606,7 @@ if __name__ == '__main__':
 	#   , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
 	#   , lambda rows: chain([('securities', )], rows)
 	#   , partial(map, lambda p: (p['SECURITIES'], ))
-	#   , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_TIME_TO_CASH'] == 'N.A.'
+	#   , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_LIQUIDATION_HORIZON'] == 'N.A.'
 	# 				  	, d.values())
 	#   , getLqaData
 	# )(date, mode)
@@ -617,9 +617,25 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
+	# compose(
+	# 	print
+	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	#   , getLiquidityDistribution
+	# )(portfolio, date, mode, 'USD')
+
+
+	# For debugging purposes, indicate liquidity for each position
 	compose(
 		print
-	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	  , getLiquidityDistribution
-	)(portfolio, date, mode, 'USD')
+	  , partial(writeCsv, portfolio + '_liquidity_position_' + date + '.csv')
+	  , partial( map
+	  		   , lambda p: ( getIdnType(p)[0]
+	  		   			   , getLiquidityCategory( date
+	  		   			   						 , mode
+	  		   			   						 , getBlpData(date, mode)
+	  		   			   						 , getLqaData(date, mode)
+	  		   			   						 , p)
+	  		   			   , marketValueWithFX(getFX(date, 'USD'), p)
+	  		   			   ))
+	)(getPortfolioPositions(portfolio, date, mode))

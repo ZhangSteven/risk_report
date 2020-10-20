@@ -180,11 +180,26 @@ def getFX(date, targetCurrency):
 
 
 
-def getLiquidityOverride():
+@lru_cache(maxsize=3)
+def getLiquidityOverrideOnDate(date):
 	"""
-	Returns: [Dictionary] (date, securityId) -> [String] liquidity category
+	[String] date (yyyymmdd) => [Dictionary] securityId -> liquidity category
 
-	Provide the final override of the liquidity
+	"""
+	return \
+	compose(
+		dict
+	  , partial(map, lambda t: (t[0][1], t[1]))
+	  , partial(filter, lambda t: t[0][0] == date)
+	  , lambda d: d.items()
+	)(getLiquidityOverrideFromFile('Liquidity_Override.xlsx'))
+
+
+
+@lru_cache(maxsize=3)
+def getLiquidityOverrideFromFile(file):
+	"""
+	[String] file => [Dictionary] (date, securityId) -> liquidity category
 	"""
 	return \
 	compose(
@@ -195,7 +210,7 @@ def getLiquidityOverride():
 	  					   ))
 	  , getRawPositionsFromFile
 	  , partial(join, getDataDirectory())
-	)('Liquidity_Override.xlsx')
+	)(file)
 
 
 
