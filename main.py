@@ -524,7 +524,7 @@ if __name__ == '__main__':
 
 
 	"""
-	Step 6. Write a output csv with the country groups and asset types in the
+	Step 6. Write to csv with the country groups and asset types in the
 	SFC template file. Update that template file if necessary.
 	"""
 	# Run this section twice to get: 
@@ -540,12 +540,12 @@ if __name__ == '__main__':
 
 
 	# Write the final asset allocation csv
-	# compose(
-	# 	print
-	#   , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
-	#   , lambda t: (t[0], list(t[1]))
-	#   , readSfcTemplate
-	# )('SFC_Asset_Allocation_Template.xlsx')
+	compose(
+		print
+	  , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
+	  , lambda t: (t[0], list(t[1]))
+	  , readSfcTemplate
+	)('SFC_Asset_Allocation_Template.xlsx')
 
 
 	################################################################
@@ -614,12 +614,12 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	compose(
-		print
-	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	  , getLiquidityDistribution
-	)(portfolio, date, mode, 'USD')
+	# compose(
+	# 	print
+	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	#   , getLiquidityDistribution
+	# )(portfolio, date, mode, 'USD')
 
 
 	# For debugging purposes, indicate liquidity for each position
