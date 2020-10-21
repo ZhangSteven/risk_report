@@ -197,7 +197,7 @@ marketValueWithFX = lambda FX, position: \
 
 
 
-""" 
+"""
 	[String] date, [String] reportingCurrency, [Iterator] positions
 		=> [Float] sum of market value of positions in reporting currency
 """
@@ -508,7 +508,7 @@ if __name__ == '__main__':
 	#   , partial(getFISecuritiesWoRatings, getBlpData(date))
 	#   , getPortfolioPositions
 	# )(portfolio, date)
-	
+
 
 	"""
 	Step 5. Check if all securities get	country code and map to a country group,
