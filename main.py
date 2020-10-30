@@ -467,7 +467,11 @@ if __name__ == '__main__':
 	date = args.date
 
 
-	# Step 1. Create a file containing the (id, idtype) columns.
+	# Step 1. Prepare the the BlpData_Template.xlsx for the portfolio positions.
+	# 
+	# 1) Create a file containing the (id, idtype) columns;
+	# 2) Use the BlpData_Template.xlsx to load Bloomberg data and save result.
+	# 
 	# compose(
 	# 	print
 	#   , lambda positions: \
@@ -476,12 +480,8 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	# Step 2. Use the BlpData_Template.xlsx to load Bloomberg data and save
-	# the result. In the case of using file as datastore, the blp file name
-	# needs to follow the naming convention defined in data.py
-
-
-	# Step 3. Check if all asset types can be determined.
+	# Step 2. Test whether every position gets an asset type.
+	# 
 	# compose(
 	# 	print
 	#   , lambda positions: writeCsv( portfolio + '_assetType_' + date + '.csv'
@@ -492,12 +492,10 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	"""
-	Step 4. Check if all Fixed Income securities get credit ratings.
-	Those bonds with no credit ratings from any one of the 3 angencies or
-	those with some ratings but all equal to zero, will be saved to a csv file. 
-	Ask risk team to see if they want to give any manual credit scores to those. 
-	"""
+	# Step 3 (optional). Write the list of bonds that don't have any credit
+	# ratings to a csv file. This will be useful if the risk team wants to 
+	# give any manual credit ratings.
+	# 
 	# compose(
 	# 	print
 	#   , lambda positions: \
@@ -510,10 +508,9 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	"""
-	Step 5. Check if all securities get	country code and map to a country group,
-	except those not applicable, e.g., cash and FX forwards.
-	"""
+	# Step 4. Check if all positions have a country code and a country group,
+	# provided that a country code is applicable to the position.
+	# 
 	# compose(
 	# 	print
 	#   , partial(valmap, partial(sumMarketValueInCurrency, date, 'USD'))
@@ -523,13 +520,11 @@ if __name__ == '__main__':
 	# )(portfolio, date, mode)
 
 
-	"""
-	Step 6. Write to csv with the country groups and asset types in the
-	SFC template file. Update that template file if necessary.
-	"""
-	# Run this section twice to get: 
-	# 1. cash total 
-	# 2. fx forward (change type to 'Foreign exchange derivatives')
+	# Step 5. Generate the SFC asset allocation report.
+	# 
+	# 1) Get cash total and fx forward. Use type string 'Cash' for cash and 
+	# 	'Foreign exchange derivatives' for fx forward.
+	# 
 	# compose(
 	# 	print
 	#   , lambda positions: \
@@ -537,9 +532,9 @@ if __name__ == '__main__':
 	#   										, 'USD', 'Cash')
 	#   , getPortfolioPositions
 	# )(portfolio, date)
-
-
-	# Write the final asset allocation csv
+	# 
+	# 2) Write the asset allocation csv.
+	# 
 	compose(
 		print
 	  , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
