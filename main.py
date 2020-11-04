@@ -467,6 +467,12 @@ if __name__ == '__main__':
 	date = args.date
 
 
+	#####################################
+	#
+	# Asset allocation report
+	#
+	#####################################
+
 	# Step 1. Prepare the the BlpData_Template.xlsx for the portfolio positions.
 	# 
 	# 1) Create a file containing the (id, idtype) columns;
@@ -492,9 +498,9 @@ if __name__ == '__main__':
 	# )(portfolio, date)
 
 
-	# Step 3 (optional). Write the list of bonds that don't have any credit
-	# ratings to a csv file. This will be useful if the risk team wants to 
-	# give any manual credit ratings.
+	# Step 3. Test whether all bonds get rating scores and write those with
+	# rating score = 0 to a csv file. Check with risk team whether manual override
+	# is needed.
 	# 
 	# compose(
 	# 	print
@@ -510,6 +516,9 @@ if __name__ == '__main__':
 
 	# Step 4. Check if all positions have a country code and a country group,
 	# provided that a country code is applicable to the position.
+	# 
+	# As this step calculates the market value of each position in reporting
+	# currency. So make sure the FX rates get updated.
 	# 
 	# compose(
 	# 	print
@@ -535,12 +544,12 @@ if __name__ == '__main__':
 	# 
 	# 2) Write the asset allocation csv.
 	# 
-	compose(
-		print
-	  , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
-	  , lambda t: (t[0], list(t[1]))
-	  , readSfcTemplate
-	)('SFC_Asset_Allocation_Template.xlsx')
+	# compose(
+	# 	print
+	#   , lambda t: writeAssetAllocationCsv(portfolio, date, mode, 'USD', t[0], t[1])
+	#   , lambda t: (t[0], list(t[1]))
+	#   , readSfcTemplate
+	# )('SFC_Asset_Allocation_Template.xlsx')
 
 
 	################################################################
@@ -591,6 +600,10 @@ if __name__ == '__main__':
 	#
 	#####################################
 
+	# Here we assume the lqa response file (.bbg) is available. If not, then
+	# run lqa.py to generate the lqa request and submit to Bloomberg to generate
+	# lqa response.
+	
 	# Step 1. Search for any securities that do not have a valid response from
 	# the LQA response file.
 	# compose(
@@ -609,12 +622,12 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	# compose(
-	# 	print
-	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	#   , getLiquidityDistribution
-	# )(portfolio, date, mode, 'USD')
+	compose(
+		print
+	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	  , getLiquidityDistribution
+	)(portfolio, date, mode, 'USD')
 
 
 	# For debugging purposes, indicate liquidity for each position
