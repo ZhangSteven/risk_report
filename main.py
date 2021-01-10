@@ -538,7 +538,7 @@ if __name__ == '__main__':
 	# 	print
 	#   , lambda positions: \
 	#   		getTotalMarketValueFromAssetType( date, positions, getBlpData(date)
-	#   										, 'USD', 'Cash')
+	#   										, 'USD', 'Foreign exchange derivatives')
 	#   , getPortfolioPositions
 	# )(portfolio, date)
 	# 
@@ -617,8 +617,10 @@ if __name__ == '__main__':
 	# )(date, mode)
 
 
-	# Step 2. Generate the liquidity special case file, which contains information
-	# needed to determine their liquidity bucket.
+	# Step 2. For each bond in the missing liquidity csv file, put their
+	# relevant information in the liquidity special case file, so that the
+	# program can use to determine their liquidity. For each equity missing,
+	# fill in the liquidity override file.
 
 
 	# Step 3. Generate liquidity report.
