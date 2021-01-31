@@ -52,7 +52,8 @@ def getLiquidityCategory(date, mode, blpData, lqaData, position):
 
 
 	isLiquidAsset = lambda blpData, position: \
-		True if getAssetType(blpData, position) == ('Cash', ) else False
+		True if getAssetType(blpData, position) in \
+			(('Cash', ), ('Fixed Income', 'Cash Equivalents')) else False
 
 
 	isLiquiditySpecialCase = lambda date, mode, position: \
@@ -538,7 +539,7 @@ if __name__ == '__main__':
 	# 	print
 	#   , lambda positions: \
 	#   		getTotalMarketValueFromAssetType( date, positions, getBlpData(date)
-	#   										, 'USD', 'Foreign exchange derivatives')
+	#   										, 'USD', 'Cash')
 	#   , getPortfolioPositions
 	# )(portfolio, date)
 	# 

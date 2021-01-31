@@ -11,7 +11,9 @@ Purpose of this application:
 
 ## To Do
 
-1. Once confirmed, add test case for 19437 asset allocation as of 2020-05-29 and 19437 liquidity as of 2020-05-29.
+1. Fixed Income asset allocation is always assumed to be "HK".
+
+2. Lqa data is by date only, no way to differentiate between portfolios.
 
 
 

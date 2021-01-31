@@ -48,7 +48,7 @@ getLiquiditySpecialCaseData = lambda date, mode: \
 """
 getPortfolioPositions = lambda portfolio, date, mode='production': \
 	getAllPositions(date, mode) if portfolio.lower() == 'all' else \
-	getGenevaPositions(portfolio, date, mode) if portfolio == '19437' else \
+	getGenevaPositions(portfolio, date, mode) if portfolio in ['19437', '60001'] else \
 	getBlpPositions(portfolio, date, mode)
 
 
