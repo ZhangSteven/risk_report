@@ -11,9 +11,9 @@ Purpose of this application:
 
 ## To Do
 
-1. Fixed Income asset allocation is always assumed to be "HK".
+1. getLqaData() needs to be changed, so that we can differentiate different portfolios.
 
-2. Lqa data is by date only, no way to differentiate between portfolios.
+2. Fixed Income asset allocation is always assumed to be "HK".
 
 
 

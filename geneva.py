@@ -110,11 +110,14 @@ def getGenevaIdnType(position):
 
 	isBondType = lambda assetType: assetType.split()[-1] == 'Bond'
 
+	isFutureType = lambda assetType: assetType == 'Commodity Future'
+
 	investId, assetType = position['InvestID'], position['SortKey']
 	
 
 	return \
 	(investId + ' Equity', 'TICKER') if isEquityType(assetType) else \
+	(investId, 'TICKER') if isFutureType(assetType) else \
 	(ISINfromInvestID(investId), 'ISIN') if isBondType(assetType) else \
 	lognContinue( 'getGenevaIdnType(): special case: {0}'.format(position['InvestID'])
 				, (position['InvestID'], position['SortKey']))

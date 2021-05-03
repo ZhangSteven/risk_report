@@ -542,7 +542,7 @@ if __name__ == '__main__':
 	#   										, 'USD', 'Cash')
 	#   , getPortfolioPositions
 	# )(portfolio, date)
-	# 
+
 	# 2) Write the asset allocation csv.
 	# 
 	# compose(
@@ -578,7 +578,7 @@ if __name__ == '__main__':
 	# Show the positions with a particular asset type and country group
 	# compose(
 	# 	showPositions
-	#   , lambda d: d[('Fixed income (Note 2)', 'Corporate (Note 4)', 'Non-Investment Grade (Note 3)', 'Financial Institution')]['China - Mainland']
+	#   , lambda d: d[('Fixed income (Note 2)', 'Corporate (Note 4)', 'Investment Grade (Note 3)', 'Non-Financial Institution')]['China - Hong Kong']
 	#   , lambda t: getAssetCountryAllocation(date, getBlpData(date, mode), t[2], t[1], t[0])
 	#   , lambda t: (t[0], t[1], list(t[2]))
 	#   , lambda portfolio: ( getPortfolioPositions(portfolio, date, mode)
@@ -607,15 +607,15 @@ if __name__ == '__main__':
 	
 	# Step 1. Search for any securities that do not have a valid response from
 	# the LQA response file.
-	# compose(
-	# 	print
-	#   , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
-	#   , lambda rows: chain([('securities', )], rows)
-	#   , partial(map, lambda p: (p['SECURITIES'], ))
-	#   , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_LIQUIDATION_HORIZON'] == 'N.A.'
-	# 				  	, d.values())
-	#   , getLqaData
-	# )(date, mode)
+	compose(
+		print
+	  , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
+	  , lambda rows: chain([('securities', )], rows)
+	  , partial(map, lambda p: (p['SECURITIES'], ))
+	  , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_LIQUIDATION_HORIZON'] == 'N.A.'
+					  	, d.values())
+	  , getLqaData
+	)(date, mode)
 
 
 	# Step 2. For each bond in the missing liquidity csv file, put their
@@ -625,12 +625,12 @@ if __name__ == '__main__':
 
 
 	# Step 3. Generate liquidity report.
-	compose(
-		print
-	  , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
-	  , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
-	  , getLiquidityDistribution
-	)(portfolio, date, mode, 'USD')
+	# compose(
+	# 	print
+	#   , partial(writeCsv, portfolio + '_liquidity_' + date + '.csv')
+	#   , lambda rows: chain([('Category', 'Total', 'Percentage')], rows)
+	#   , getLiquidityDistribution
+	# )(portfolio, date, mode, 'USD')
 
 
 	# For debugging purposes, indicate liquidity for each position

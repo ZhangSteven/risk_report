@@ -121,8 +121,8 @@ def getOtherAssetType(blpData, position):
 
 
 	# FIXME: this function is not complete, as physical commodity is not included
-	getCommodityAssetType = lambda blpData, position: \
-		('Commodity', 'Derivatives')
+	# getCommodityAssetType = lambda blpData, position: \
+	# 	('Commodity', 'Derivatives')
 
 
 	getFIAssetType = lambda blpData, position: \
@@ -138,6 +138,14 @@ def getOtherAssetType(blpData, position):
 	getCommodityAssetType(blpData, position) if isCommodityType(blpData, position) else \
 	getFIAssetType(blpData, position) if isFIType(blpData, position) else \
 	lognRaise('getOtherAssetType(): invalid asset type: {0}'.format(getIdnType(position)))
+
+
+
+def getCommodityAssetType(blpData, position):
+	# FIXME: add implementation. In 19437, they use US treasury futures
+	# to hedge, but in Bloomberg those are classified as commondity futures,
+	# actually they are better classified as others.
+	return ('Others', )
 
 
 
@@ -205,6 +213,10 @@ def getCountryCode(blpData, position):
 		getAssetType(blpData, position)[0] == 'Fixed Income'
 
 
+	isOthersType = lambda blpData, position: \
+		getAssetType(blpData, position)[0] == 'Others'
+
+
 	return \
 	getSpecialCaseCountry(position) if isSpecialCase(position) else \
 	getPrivateSecurityCountry(position) if isPrivateSecurity(position) else \
@@ -212,6 +224,7 @@ def getCountryCode(blpData, position):
 	getMoneyMarketCountry(position) if isMoneyMarket(position) else \
 	getCommodityCountry(blpData, position) if isCommodityType(blpData, position) else \
 	getFundCountry(blpData, position) if isFundType(blpData, position) else \
+	getOthersCountry(blpData, position) if isOthersType(blpData, position) else \
 	getEquityCountry(blpData, position) if isEquityType(blpData, position) else \
 	getFICountry(blpData, position) if isFIType(blpData, position) else \
 	lognRaise('getCountryCode(): unsupported asset type')
@@ -281,8 +294,24 @@ def getCommodityCountry(blpData, position):
 	The logic to deal with commodity product is not yet clear, so we put it
 	here.
 	"""
-	# FIXME: Add implementation
+	# FIXME: not implemented
 	lognRaise('getCommodityCountry(): {0}'.format(getIdnType(position)))
+
+
+
+def getOthersCountry(blpData, position):
+	"""
+	[Dictionary] blpData, [Dictionary] position => [String] country
+
+	The logic to deal with commodity product is not yet clear, so we put it
+	here.
+	"""
+	_id, _id_type = getIdnType(position)
+	if (_id, _id_type) == ('TYM1 Comdty', 'TICKER'):
+		return 'US'
+	else:
+		# FIXME: Add implementation
+		lognRaise('getCommodityCountry(): {0}'.format(getIdnType(position)))
 
 
 
