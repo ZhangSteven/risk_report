@@ -556,9 +556,9 @@ if __name__ == '__main__':
 	################################################################
 	# Debug Section
 	################################################################
-	# def showPositions(L):
-	# 	for x in L:
-	# 		print(getIdnType(x)[0], getMarketValue(x))
+	def showPositions(L):
+		for x in L:
+			print(getIdnType(x)[0], getMarketValue(x))
 
 	# def showKeys(d):
 	# 	for key in d:
@@ -576,15 +576,19 @@ if __name__ == '__main__':
 
 
 	# Show the positions with a particular asset type and country group
-	# compose(
-	# 	showPositions
-	#   , lambda d: d[('Fixed income (Note 2)', 'Corporate (Note 4)', 'Investment Grade (Note 3)', 'Non-Financial Institution')]['China - Hong Kong']
-	#   , lambda t: getAssetCountryAllocation(date, getBlpData(date, mode), t[2], t[1], t[0])
-	#   , lambda t: (t[0], t[1], list(t[2]))
-	#   , lambda portfolio: ( getPortfolioPositions(portfolio, date, mode)
-	#   					  , *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
-	#   					  )
-	# )(portfolio)
+	compose(
+		showPositions
+	  , lambda d: d[( 'Fixed income (Note 2)'
+	  				, 'Corporate (Note 4)'
+	  				, 'Non-Investment Grade (Note 3)'
+	  				, 'Financial Institution'
+	  				)]['China - Mainland']
+	  , lambda t: getAssetCountryAllocation(date, getBlpData(date, mode), t[2], t[1], t[0])
+	  , lambda t: (t[0], t[1], list(t[2]))
+	  , lambda portfolio: ( getPortfolioPositions(portfolio, date, mode)
+	  					  , *readSfcTemplate('SFC_Asset_Allocation_Template.xlsx')
+	  					  )
+	)(portfolio)
 
 
 	# Show cash
@@ -607,15 +611,15 @@ if __name__ == '__main__':
 	
 	# Step 1. Search for any securities that do not have a valid response from
 	# the LQA response file.
-	compose(
-		print
-	  , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
-	  , lambda rows: chain([('securities', )], rows)
-	  , partial(map, lambda p: (p['SECURITIES'], ))
-	  , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_LIQUIDATION_HORIZON'] == 'N.A.'
-					  	, d.values())
-	  , getLqaData
-	)(date, mode)
+	# compose(
+	# 	print
+	#   , partial(writeCsv, 'MissingLiquidity_' + date + '.csv')
+	#   , lambda rows: chain([('securities', )], rows)
+	#   , partial(map, lambda p: (p['SECURITIES'], ))
+	#   , lambda d: filter( lambda p: p['ERROR CODE'] != 0 or p['LQA_LIQUIDATION_HORIZON'] == 'N.A.'
+	# 				  	, d.values())
+	#   , getLqaData
+	# )(date, mode)
 
 
 	# Step 2. For each bond in the missing liquidity csv file, put their
