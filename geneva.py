@@ -106,7 +106,8 @@ def getGenevaIdnType(position):
 
 	isEquityType = lambda assetType: \
 		assetType in [ 'Common Stock', 'Real Estate Investment Trust'
-					 , 'Stapled Security', 'Exchange Trade Fund']
+					 , 'Stapled Security', 'Exchange Trade Fund'
+					 , 'American Depository Receipt']
 
 	isBondType = lambda assetType: assetType.split()[-1] == 'Bond'
 
