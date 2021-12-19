@@ -13,9 +13,10 @@ from risk_report.geneva import isGenevaPosition, getGenevaPortfolioId, getGeneva
 							, isGenevaRepo, isGenevaMoneyMarket, isGenevaPrivateSecurity \
 							, getGenevaQuantity
 from clamc_datafeed.feeder import getPositions
-from utils.excel import getRawPositions, fileToLines, getRawPositionsFromFile
-from utils.iter import pop, firstOf
-from utils.utility import mergeDict, fromExcelOrdinal
+from steven_utils.excel import getRawPositionsFromLines, fileToLines, getRawPositionsFromFile \
+							, fromExcelOrdinal
+from steven_utils.iter import pop, firstOf
+from steven_utils.utility import mergeDict
 from toolz.functoolz import compose
 from toolz.dicttoolz import valmap
 from functools import partial, lru_cache
@@ -360,7 +361,7 @@ def getAllPositionsBlp(date, mode):
 	compose(
 		partial(map, partial(updatePosition, date))
 	  , partial(filterfalse, lambda p: p['Account Code'] == '')
-	  , getRawPositions
+	  , getRawPositionsFromLines
 	  , lambda lines: dropwhile(lambda line: line[0] != 'Name', lines)
 	)(lines)
 

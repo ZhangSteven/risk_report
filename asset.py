@@ -6,8 +6,8 @@ from risk_report.geneva import isGenevaPosition, getGenevaAssetType
 from risk_report.data import getRatingScoreMapping, getCountryMapping, getAssetTypeSpecialCaseData \
 							, getPortfolioId, getIdnType, isPrivateSecurity, isCash \
 							, isMoneyMarket, isRepo, isFxForward, isFund
-from utils.iter import pop, firstOf
-from utils.utility import mergeDict
+from steven_utils.iter import pop, firstOf
+from steven_utils.utility import mergeDict
 from toolz.functoolz import compose
 from functools import partial, lru_cache
 from itertools import filterfalse, takewhile
